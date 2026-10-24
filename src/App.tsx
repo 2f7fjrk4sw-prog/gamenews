@@ -11,8 +11,7 @@ import { RadarSection } from './components/RadarSection';
 import { MarketingSection } from './components/MarketingSection';
 import { PitchStudioSection } from './components/PitchStudioSection';
 import { ChecklistSection } from './components/ChecklistSection';
-import { SteamCalendarSection } from './components/SteamCalendarSection';
-import { PlaybookSection } from './components/PlaybookSection';
+import { GuideSection } from './components/GuideSection';
 
 import './App.css';
 
@@ -25,7 +24,7 @@ function App() {
   });
 
   const [myGameTitle, setMyGameTitle] = useState<string>(() => {
-    return localStorage.getItem('user_game_title') || 'Kaos Ekibi / My Co-Op Project';
+    return localStorage.getItem('user_game_title') || 'Kaos Ekibi';
   });
 
   // Competitors Data (Persistent in localStorage)
@@ -54,7 +53,6 @@ function App() {
     return initialChecklist;
   });
 
-  // Save game config when changed
   useEffect(() => {
     localStorage.setItem('user_game_target_date', targetDate);
   }, [targetDate]);
@@ -69,7 +67,7 @@ function App() {
     const myTime = new Date(targetDate).getTime();
     const diffDays = Math.round((compTime - myTime) / (1000 * 60 * 60 * 24));
     const isHighTier = comp.wishlistTier === 'Very High (100k+)' || comp.wishlistTier === 'High (50k-100k)';
-    return Math.abs(diffDays) <= 5 && isHighTier;
+    return Math.abs(diffDays) <= 7 && isHighTier;
   }).length;
 
   // Compute checklist progress percentage
@@ -78,19 +76,15 @@ function App() {
   const checklistProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
-    <div className="app-shell">
+    <div className="clean-app">
       <Navbar 
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        targetDate={targetDate}
-        setTargetDate={setTargetDate}
-        myGameTitle={myGameTitle}
-        setMyGameTitle={setMyGameTitle}
         criticalCollisionsCount={criticalCollisionsCount}
         checklistProgress={checklistProgress}
       />
 
-      <main className="main-content-area">
+      <main className="clean-main">
         {activeTab === 'radar' && (
           <RadarSection 
             competitors={competitors}
@@ -98,6 +92,7 @@ function App() {
             targetDate={targetDate}
             setTargetDate={setTargetDate}
             myGameTitle={myGameTitle}
+            setMyGameTitle={setMyGameTitle}
           />
         )}
 
@@ -119,29 +114,18 @@ function App() {
           />
         )}
 
-        {activeTab === 'calendar' && (
-          <SteamCalendarSection 
+        {activeTab === 'guide' && (
+          <GuideSection 
             festivals={steamFestivals}
             targetDate={targetDate}
           />
         )}
-
-        {activeTab === 'playbook' && (
-          <PlaybookSection />
-        )}
       </main>
 
-      <footer className="site-footer">
-        <div className="footer-content">
-          <div className="footer-left">
-            <span className="footer-brand">GameLaunch & Friendslop Marketing Radar</span>
-            <span className="footer-desc">
-              Steam bağımsız oyun geliştiricileri için tasarlanmış taktiksel lansman platformu.
-            </span>
-          </div>
-          <div className="footer-right">
-            <span>Hedef Tür: Online Co-Op, Proximity Voice & Komedi</span>
-          </div>
+      <footer className="clean-footer">
+        <div className="footer-inner">
+          <span>GameLaunch Radar — Steam Co-Op & Friendslop Marketing</span>
+          <span className="footer-mute">Yerel ve Çevrim Dışı Öncelikli Araç</span>
         </div>
       </footer>
     </div>

@@ -5,10 +5,7 @@ import {
   Square, 
   Plus, 
   RotateCcw, 
-  Sparkles, 
-  Clock, 
-  CheckCircle2, 
-  Trash2
+  Trash2 
 } from 'lucide-react';
 import { initialChecklist } from '../data/launchChecklist';
 
@@ -27,7 +24,6 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklist, s
   const [newTaskPhase, setNewTaskPhase] = useState<ChecklistItem['phase']>('1 Ay Önce');
   const [newTaskPriority, setNewTaskPriority] = useState<ChecklistItem['priority']>('Önemli');
 
-  // Stats
   const totalTasks = checklist.length;
   const completedTasks = checklist.filter((item) => item.isDone).length;
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -67,14 +63,12 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklist, s
     setShowAddModal(false);
   };
 
-  // Delete task
   const handleDeleteTask = (id: string) => {
     const updated = checklist.filter((i) => i.id !== id);
     setChecklist(updated);
     localStorage.setItem('game_checklist', JSON.stringify(updated));
   };
 
-  // Reset to initial
   const handleReset = () => {
     if (window.confirm('Kontrol listesini varsayılan haline döndürmek istiyor musunuz?')) {
       setChecklist(initialChecklist);
@@ -82,7 +76,6 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklist, s
     }
   };
 
-  // Phases in order
   const phases: ChecklistItem['phase'][] = [
     '6 Ay Önce',
     '3 Ay Önce',
@@ -92,155 +85,123 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklist, s
   ];
 
   return (
-    <section className="section-container">
-      {/* Overall Progress Banner */}
-      <div className="checklist-progress-card">
-        <div className="progress-top-row">
+    <div className="tab-pane">
+      {/* 1. Progress Overview Bar */}
+      <div className="checklist-summary-card">
+        <div className="summary-top">
           <div>
-            <div className="progress-badge">
-              <Sparkles size={14} /> LANSMAN HAZIRLIK DERECESİ
-            </div>
-            <h2 className="progress-title">
-              {progressPercent === 100
-                ? '🎉 TEBRİKLER! OYUNUNUZ RESMEN LANSMANA HAZIR!'
-                : progressPercent >= 60
-                ? '🔥 Harika İlerleme! Lansman hazırlıkları hızla tamamlanıyor.'
-                : '🚀 Lansman Yolculuğu Başladı! Kritik adımları tek tek tamamlayın.'}
-            </h2>
-            <p className="progress-subtitle">
-              Toplam <strong>{totalTasks}</strong> görevden <strong>{completedTasks}</strong> tanesi tamamlandı.
-            </p>
+            <h3 className="summary-title">Lansman Hazırlık Listesi</h3>
+            <span className="summary-subtitle">
+              {totalTasks} adımdan {completedTasks} tanesi tamamlandı (%{progressPercent})
+            </span>
           </div>
 
-          <div className="progress-stat-ring">
-            <span className="stat-percentage">{progressPercent}%</span>
-            <span className="stat-label">Tamamlandı</span>
+          <div className="summary-actions">
+            <button className="pill-btn" onClick={handleReset} title="Varsayılana Sıfırla">
+              <RotateCcw size={13} /> Sıfırla
+            </button>
+            <button className="action-btn-primary" onClick={() => setShowAddModal(true)}>
+              <Plus size={14} /> Yeni Görev Ekle
+            </button>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="progress-bar-track">
+        {/* Clean Progress Bar */}
+        <div className="simple-progress-track">
           <div 
-            className="progress-bar-fill" 
+            className="simple-progress-fill" 
             style={{ width: `${progressPercent}%` }}
           />
         </div>
 
-        <div className="checklist-actions-bar">
-          <div className="filter-chips-row">
-            <button 
-              className={`filter-chip ${filterMode === 'all' ? 'active' : ''}`}
-              onClick={() => setFilterMode('all')}
-            >
-              Tüm Görevler ({totalTasks})
-            </button>
-            <button 
-              className={`filter-chip ${filterMode === 'pending' ? 'active' : ''}`}
-              onClick={() => setFilterMode('pending')}
-            >
-              Kalanlar ({totalTasks - completedTasks})
-            </button>
-            <button 
-              className={`filter-chip ${filterMode === 'completed' ? 'active' : ''}`}
-              onClick={() => setFilterMode('completed')}
-            >
-              Tamamlananlar ({completedTasks})
-            </button>
-          </div>
-
-          <div className="action-buttons-group">
-            <button className="btn-secondary" onClick={handleReset} title="Varsayılana Sıfırla">
-              <RotateCcw size={15} /> Sıfırla
-            </button>
-            <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-              <Plus size={16} /> Yeni Görev Ekle
-            </button>
-          </div>
+        {/* Filter Pills */}
+        <div className="simple-filters" style={{ marginTop: '12px' }}>
+          <button 
+            className={`pill-btn ${filterMode === 'all' ? 'active' : ''}`}
+            onClick={() => setFilterMode('all')}
+          >
+            Tüm Görevler ({totalTasks})
+          </button>
+          <button 
+            className={`pill-btn ${filterMode === 'pending' ? 'active' : ''}`}
+            onClick={() => setFilterMode('pending')}
+          >
+            Yapılacaklar ({totalTasks - completedTasks})
+          </button>
+          <button 
+            className={`pill-btn ${filterMode === 'completed' ? 'active' : ''}`}
+            onClick={() => setFilterMode('completed')}
+          >
+            Tamamlananlar ({completedTasks})
+          </button>
         </div>
       </div>
 
-      {/* Phase Groups */}
-      <div className="phase-groups-container">
+      {/* 2. Tasks by Phase */}
+      <div className="checklist-phases-wrap">
         {phases.map((phase) => {
-          let itemsInPhase = checklist.filter((item) => item.phase === phase);
+          let items = checklist.filter((i) => i.phase === phase);
+          if (filterMode === 'pending') items = items.filter((i) => !i.isDone);
+          if (filterMode === 'completed') items = items.filter((i) => i.isDone);
 
-          if (filterMode === 'pending') {
-            itemsInPhase = itemsInPhase.filter((item) => !item.isDone);
-          } else if (filterMode === 'completed') {
-            itemsInPhase = itemsInPhase.filter((item) => item.isDone);
-          }
+          if (items.length === 0 && filterMode !== 'all') return null;
 
-          if (itemsInPhase.length === 0 && filterMode !== 'all') return null;
-
-          const phaseCompleted = checklist.filter((i) => i.phase === phase && i.isDone).length;
-          const phaseTotal = checklist.filter((i) => i.phase === phase).length;
+          const doneCount = checklist.filter((i) => i.phase === phase && i.isDone).length;
+          const totalCount = checklist.filter((i) => i.phase === phase).length;
 
           return (
-            <div key={phase} className="phase-card">
-              <div className="phase-header">
-                <div className="phase-title-row">
-                  <Clock size={18} className="phase-icon" />
-                  <h3 className="phase-name">{phase}</h3>
-                  <span className="phase-progress-pill">
-                    {phaseCompleted} / {phaseTotal} Tamamlandı
-                  </span>
-                </div>
+            <div key={phase} className="clean-phase-group">
+              <div className="phase-title-bar">
+                <h4>{phase}</h4>
+                <span className="phase-badge">{doneCount}/{totalCount}</span>
               </div>
 
-              <div className="tasks-list">
-                {itemsInPhase.map((item) => (
+              <div className="clean-tasks-list">
+                {items.map((item) => (
                   <div 
                     key={item.id} 
-                    className={`task-row ${item.isDone ? 'task-done' : ''}`}
+                    className={`clean-task-row ${item.isDone ? 'done' : ''}`}
                     onClick={() => handleToggle(item.id)}
                   >
                     <button 
                       type="button" 
-                      className={`task-checkbox-btn ${item.isDone ? 'checked' : ''}`}
+                      className="task-check-icon"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleToggle(item.id);
                       }}
                     >
                       {item.isDone ? (
-                        <CheckCircle2 size={20} className="checkbox-icon checked" />
+                        <CheckSquare size={18} className="icon-checked" />
                       ) : (
-                        <Square size={20} className="checkbox-icon" />
+                        <Square size={18} className="icon-unchecked" />
                       )}
                     </button>
 
-                    <div className="task-content">
-                      <div className="task-title-row">
-                        <span className="task-title">{item.task}</span>
-                        <span className={`priority-badge priority-${item.priority.toLowerCase()}`}>
-                          {item.priority === 'Kritik' && '🔴 Kritik'}
-                          {item.priority === 'Önemli' && '🟡 Önemli'}
-                          {item.priority === 'Tavsiye' && '🟢 Tavsiye'}
+                    <div className="task-body">
+                      <div className="task-title-line">
+                        <span className="task-name">{item.task}</span>
+                        <span className={`priority-tag p-${item.priority.toLowerCase()}`}>
+                          {item.priority}
                         </span>
                       </div>
-                      <p className="task-desc">{item.description}</p>
+                      <p className="task-explanation">{item.description}</p>
                     </div>
 
                     {item.id.startsWith('task-') && (
                       <button 
-                        className="delete-task-btn"
+                        className="icon-del-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteTask(item.id);
                         }}
-                        title="Görevi Sil"
+                        title="Sil"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>
                 ))}
-
-                {itemsInPhase.length === 0 && (
-                  <div className="empty-phase-note">
-                    Bu aşamada görüntülenecek görev yok.
-                  </div>
-                )}
               </div>
             </div>
           );
@@ -249,34 +210,29 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklist, s
 
       {/* Modal: Add Task */}
       {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title-wrap">
-                <CheckSquare size={22} className="modal-icon" />
-                <h3>Yeni Lansman Görevi Ekle</h3>
-              </div>
-              <button className="close-btn" onClick={() => setShowAddModal(false)}>×</button>
+        <div className="simple-modal-backdrop" onClick={() => setShowAddModal(false)}>
+          <div className="simple-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-top">
+              <h3>Yeni Lansman Görevi</h3>
+              <button className="modal-close" onClick={() => setShowAddModal(false)}>×</button>
             </div>
 
-            <form onSubmit={handleAddTask} className="modal-form">
-              <div className="form-group">
-                <label>Görev Başlığı *</label>
+            <form onSubmit={handleAddTask} className="simple-form">
+              <div className="input-group">
+                <label>Görev Başlığı</label>
                 <input 
                   type="text" 
                   required 
-                  className="form-input"
-                  placeholder="Örn: Twitch yayıncıları için özel avatar filtreleri hazırla"
+                  placeholder="Örn: 20 yayıncıya e-posta at"
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                 />
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Zaman Aşaması</label>
+              <div className="input-group-row">
+                <div className="input-group">
+                  <label>Aşama</label>
                   <select 
-                    className="form-select"
                     value={newTaskPhase}
                     onChange={(e) => setNewTaskPhase(e.target.value as ChecklistItem['phase'])}
                   >
@@ -286,43 +242,37 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklist, s
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label>Öncelik Derecesi</label>
+                <div className="input-group">
+                  <label>Öncelik</label>
                   <select 
-                    className="form-select"
                     value={newTaskPriority}
                     onChange={(e) => setNewTaskPriority(e.target.value as ChecklistItem['priority'])}
                   >
-                    <option value="Kritik">🔴 Kritik</option>
-                    <option value="Önemli">🟡 Önemli</option>
-                    <option value="Tavsiye">🟢 Tavsiye</option>
+                    <option value="Kritik">Kritik</option>
+                    <option value="Önemli">Önemli</option>
+                    <option value="Tavsiye">Tavsiye</option>
                   </select>
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Görev Açıklaması & Notlar</label>
+              <div className="input-group">
+                <label>Açıklama</label>
                 <textarea 
-                  className="form-textarea"
-                  rows={3}
-                  placeholder="Bu görevin detayları, linkleri veya dikkat edilecek hususlar..."
+                  rows={2}
+                  placeholder="Detaylar veya notlar..."
                   value={newTaskDesc}
                   onChange={(e) => setNewTaskDesc(e.target.value)}
                 />
               </div>
 
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>
-                  İptal
-                </button>
-                <button type="submit" className="btn-primary">
-                  Görevi Kaydet
-                </button>
+              <div className="modal-btn-row">
+                <button type="button" className="btn-cancel" onClick={() => setShowAddModal(false)}>İptal</button>
+                <button type="submit" className="action-btn-primary">Kaydet</button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 };
