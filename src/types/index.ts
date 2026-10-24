@@ -48,6 +48,11 @@ export interface ChecklistItem {
   description: string;
   isDone: boolean;
   priority: 'Kritik' | 'Önemli' | 'Tavsiye';
+  howTo?: {
+    steps: string[];
+    proTip: string;
+    toolsOrLinks?: string;
+  };
 }
 
 export interface SteamFestivalEvent {

@@ -98,3 +98,4 @@ Senin ekibin bu oyunda kaç dakika hayatta kalabilir? Yorumlara yaz 👇`,
     hashtags: ['#friendslop', '#coopgaming', '#steamindie', '#gamingreels', '#tiktokgamer', '#indiegamebuzz'],
   },
 ];
+
