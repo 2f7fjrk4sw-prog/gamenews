@@ -205,3 +205,4 @@ export const GuideSection: React.FC<GuideSectionProps> = ({ festivals, targetDat
     </div>
   );
 };
+

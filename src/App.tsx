@@ -8,6 +8,7 @@ import { steamFestivals } from './data/steamFestivals';
 
 import { Navbar, type ActiveTab } from './components/Navbar';
 import { RadarSection } from './components/RadarSection';
+import { SocialMediaSection } from './components/SocialMediaSection';
 import { MarketingSection } from './components/MarketingSection';
 import { PitchStudioSection } from './components/PitchStudioSection';
 import { ChecklistSection } from './components/ChecklistSection';
@@ -96,6 +97,12 @@ function App() {
           />
         )}
 
+        {activeTab === 'social' && (
+          <SocialMediaSection 
+            myGameTitle={myGameTitle}
+          />
+        )}
+
         {activeTab === 'marketing' && (
           <MarketingSection channels={marketingChannels} />
         )}
@@ -125,7 +132,7 @@ function App() {
       <footer className="clean-footer">
         <div className="footer-inner">
           <span>GameLaunch Radar — Steam Co-Op & Friendslop Marketing</span>
-          <span className="footer-mute">Yerel ve Çevrim Dışı Öncelikli Araç</span>
+          <span className="footer-mute">Yerel ve Çevrim Dışı Öncelikli</span>
         </div>
       </footer>
     </div>
