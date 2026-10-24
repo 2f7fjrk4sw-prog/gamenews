@@ -28,14 +28,16 @@
 oyun-haberleri/
 ├── src/
 │   ├── components/
-│   │   ├── Navbar.tsx             # Temiz üst menü ve 5 ana sekme
+│   │   ├── Navbar.tsx             # Temiz üst menü ve 6 ana sekme
 │   │   ├── RadarSection.tsx       # Sade rakip radarı, çakışma uyarısı, hızlı filtreler
+│   │   ├── SocialMediaSection.tsx # TikTok & Instagram duyuru, kanca (hook) ve senaryo stüdyosu
 │   │   ├── MarketingSection.tsx   # Platform bazlı sade pazarlama kartları (Reddit, Discord, vb.)
 │   │   ├── PitchStudioSection.tsx # Hızlı değişkenli pitch & e-posta kopyalayıcı
 │   │   ├── ChecklistSection.tsx   # Sade lansman kontrol listesi ve ilerleme çubuğu
 │   │   └── GuideSection.tsx       # Steam Festival Takvimi + Friendslop Taktik Rehberi (Birleşik)
 │   ├── data/
 │   │   ├── competitors.ts         # Steam rakip oyun başlangıç veri seti
+│   │   ├── socialTemplates.ts     # TikTok & Instagram hazır video senaryoları ve açıklamalar
 │   │   ├── marketingChannels.ts   # Pazarlama ve tanıtım platformları
 │   │   ├── pitchTemplates.ts      # Yayıncı, basın, Reddit, TikTok şablonları
 │   │   ├── launchChecklist.ts     # 6 ay önceden çıkış sonrasına görevler
