@@ -314,3 +314,4 @@ export const PitchStudioSection: React.FC<PitchStudioProps> = ({ templates, myGa
     </section>
   );
 };
+

@@ -52,3 +52,4 @@ export const steamFestivals: SteamFestivalEvent[] = [
     impactLevel: 'High',
   },
 ];
+
