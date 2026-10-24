@@ -22,19 +22,18 @@
 
 * **Framework:** React 19 (TypeScript) + Vite
 * **İkonlar:** `lucide-react`
-* **Stil:** Modern Dark Gaming UI (`#090C12`, Neon yeşil `#10B981`, Mor `#8B5CF6`, Camgöbeği `#06B6D4`, Kırmızı `#EF4444`)
+* **Stil:** Sade, modern ve göz yormayan minimalist koyu tema (`#0D1117`, kartlar `#161B22`, kenarlıklar `#30363D`, sade yeşil ve mavi aksanlar)
 
 ```text
 oyun-haberleri/
 ├── src/
 │   ├── components/
-│   │   ├── Navbar.tsx             # Üst header, oyun adı & tarih yapılandırma, tab geçişleri
-│   │   ├── RadarSection.tsx       # Çıkış çakışması algoritması, filtreler, yeni rakip ekleme
-│   │   ├── MarketingSection.tsx   # Topluluk ve pazarlama rehberi (Reddit, Discord, TikTok, Twitch)
-│   │   ├── PitchStudioSection.tsx # Akıllı değişkenli pitch ve e-posta üretici (4-pack key generator)
-│   │   ├── ChecklistSection.tsx   # LocalStorage senkronlu interaktif lansman kontrol listesi
-│   │   ├── SteamCalendarSection.tsx # Resmi Steam indirimleri & Next Fest takvimi & blackout uyarıları
-│   │   └── PlaybookSection.tsx    # Friendslop formülü, mekanik rehberi ve Steam algoritma eşikleri
+│   │   ├── Navbar.tsx             # Temiz üst menü ve 5 ana sekme
+│   │   ├── RadarSection.tsx       # Sade rakip radarı, çakışma uyarısı, hızlı filtreler
+│   │   ├── MarketingSection.tsx   # Platform bazlı sade pazarlama kartları (Reddit, Discord, vb.)
+│   │   ├── PitchStudioSection.tsx # Hızlı değişkenli pitch & e-posta kopyalayıcı
+│   │   ├── ChecklistSection.tsx   # Sade lansman kontrol listesi ve ilerleme çubuğu
+│   │   └── GuideSection.tsx       # Steam Festival Takvimi + Friendslop Taktik Rehberi (Birleşik)
 │   ├── data/
 │   │   ├── competitors.ts         # Steam rakip oyun başlangıç veri seti
 │   │   ├── marketingChannels.ts   # Pazarlama ve tanıtım platformları
