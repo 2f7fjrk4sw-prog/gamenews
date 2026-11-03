@@ -71,7 +71,14 @@ Bu platform, oyun geliştirici ekiplere tek bir gösterge panelinden (dashboard)
 - [x] Yerel hafızaya (LocalStorage) kaydedilen interaktif kontrol listesi ve % ilerleme çubuğu
 - [x] Yeni özel görev ekleyebilme
 
-### 📌 FAZ 6: Yayınlama ve Canlıya Alma (Deploy) (Sonraki Seans İçin Hazır)
+### 📌 FAZ 6: Dışa Aktarma, Rapor & Veri Yedekleme Merkezi (Tamamlandı)
+- [x] **PDF Olarak Yazdır:** Tarayıcı yazdırma ekranına tam optimize, A4 uyumlu resmi Lansman Raporu / Pitch Deck çıktısı
+- [x] **Markdown (.md) Raporu:** Obsidian, Notion veya GitHub için tek tıkla indirilebilir tam kapsamlı lansman kiti
+- [x] **Panoya Kopyalama:** Raporun tamamını anında kopyalayıp Discord/ekibe gönderebilme
+- [x] **JSON Yedekleme & Geri Yükleme:** Eklenen rakipleri, hedef tarihi ve kontrol listesi ilerlemesini yedekleyip başka cihazda geri yükleyebilme
+- [x] **Özelleştirilebilir Bölüm Seçimi:** Rapora hangi bölümlerin dahil edileceğini belirleyen kontrol kutuları
+
+### 📌 FAZ 7: Yayınlama ve Canlıya Alma (Deploy) (Sıradaki Adım)
 - [ ] GitHub reposu oluşturma ve pushlama
 - [ ] Vercel veya Netlify ile ücretsiz internete açma
 - [ ] Canlı test ve doğrulama

@@ -13,6 +13,7 @@ import { MarketingSection } from './components/MarketingSection';
 import { PitchStudioSection } from './components/PitchStudioSection';
 import { ChecklistSection } from './components/ChecklistSection';
 import { GuideSection } from './components/GuideSection';
+import { ReportExportSection } from './components/ReportExportSection';
 
 import './App.css';
 
@@ -125,6 +126,21 @@ function App() {
           <GuideSection 
             festivals={steamFestivals}
             targetDate={targetDate}
+          />
+        )}
+
+        {activeTab === 'report' && (
+          <ReportExportSection 
+            myGameTitle={myGameTitle}
+            setMyGameTitle={setMyGameTitle}
+            targetDate={targetDate}
+            setTargetDate={setTargetDate}
+            competitors={competitors}
+            setCompetitors={setCompetitors}
+            checklist={checklist}
+            setChecklist={setChecklist}
+            criticalCollisionsCount={criticalCollisionsCount}
+            checklistProgress={checklistProgress}
           />
         )}
       </main>

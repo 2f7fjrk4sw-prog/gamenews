@@ -6,10 +6,11 @@ import {
   CheckSquare, 
   BookOpen, 
   AlertCircle,
-  Smartphone
+  Smartphone,
+  FileDown
 } from 'lucide-react';
 
-export type ActiveTab = 'radar' | 'social' | 'marketing' | 'pitch' | 'checklist' | 'guide';
+export type ActiveTab = 'radar' | 'social' | 'marketing' | 'pitch' | 'checklist' | 'guide' | 'report';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -92,6 +93,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <BookOpen size={15} />
             <span>Rehber</span>
+          </button>
+
+          <button 
+            className={`clean-nav-item nav-export-highlight ${activeTab === 'report' ? 'active' : ''}`}
+            onClick={() => setActiveTab('report')}
+          >
+            <FileDown size={15} />
+            <span>Rapor & Dışa Aktar</span>
           </button>
         </nav>
       </div>

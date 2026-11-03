@@ -35,6 +35,11 @@
    - Steam resmi festivalleri ve mevsimsel indirim takvimi (İndirim dönemi blackout uyarısı).
    - Friendslop viral oyun formülü ve Steam algoritmasının 3 gizli eşiği.
 
+7. **📄 Dışa Aktarma, Rapor & Veri Yedekleme (`ReportExportSection`):**
+   - **PDF Yazdır:** Sayfa sonu ve düzeni ayarlanmış A4 uyumlu resmi Lansman Raporu / Pitch Deck çıktısı.
+   - **Markdown (.md):** Obsidian, Notion ve GitHub için tek tıkla indirilebilir master lansman kiti.
+   - **JSON Yedekleme:** Yerel tarayıcı verilerini dışa aktarma ve başka cihaza geri yükleme.
+
 ---
 
 ## 🚀 Kurulum ve Çalıştırma
