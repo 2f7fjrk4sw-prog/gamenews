@@ -78,8 +78,8 @@ Bu platform, oyun geliştirici ekiplere tek bir gösterge panelinden (dashboard)
 - [x] **JSON Yedekleme & Geri Yükleme:** Eklenen rakipleri, hedef tarihi ve kontrol listesi ilerlemesini yedekleyip başka cihazda geri yükleyebilme
 - [x] **Özelleştirilebilir Bölüm Seçimi:** Rapora hangi bölümlerin dahil edileceğini belirleyen kontrol kutuları
 
-### 📌 FAZ 7: Yayınlama ve Canlıya Alma (Deploy) (Sıradaki Adım)
-- [ ] GitHub reposu oluşturma ve pushlama
+### 📌 FAZ 7: Yayınlama ve Canlıya Alma (Deploy)
+- [x] GitHub reposu oluşturma ve pushlama (https://github.com/2f7fjrk4sw-prog/gamenews)
 - [ ] Vercel veya Netlify ile ücretsiz internete açma
 - [ ] Canlı test ve doğrulama
 
