@@ -66,6 +66,10 @@ oyun-haberleri/
 2. **Offline-First & LocalStorage:** Kullanıcının hedef çıkış tarihi, oyun adı, kontrol listesi durumları ve eklediği rakipler `localStorage` üzerinde saklanır.
 3. **TypeScript Verbatim Module Syntax:** Tip importları daima `import type { ... } from '...'` formatında olmalıdır.
 4. **Temiz Derleme:** Her değişiklikten sonra `npm run build` ve `npm run lint` çalıştırılmalıdır (0 hata, 0 uyarı standardı).
+5. **Anlaşılır & Açıklayıcı Git Commit Standartları (Human-Readable Commits):**
+   - GitHub commit mesajları herkesin (ekip arkadaşları, geliştiriciler, dış gözler) ilk bakışta ne yapıldığını hemen kavrayabileceği netlikte yazılmalıdır.
+   - Format: `[Tür/Modül]: Net ve Anlaşılır Açıklama` (Örn: `feat(güvenlik): Ekip şifreli giriş ekranı, oturum yönetimi ve şifre değiştirme özelliği eklendi`).
+   - Çoklu dosya veya büyük özelliklerde commit gövdesine yapılanların 2-3 maddelik kısa özeti eklenmelidir.
 
 ---
 
