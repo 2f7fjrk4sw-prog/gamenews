@@ -1,13 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const getEnvOrStored = (envKey: string, storedKey: string): string => {
-  const envVal = import.meta.env[envKey];
-  if (typeof envVal === 'string' && envVal.trim() !== '') {
-    return envVal.trim();
-  }
-  return localStorage.getItem(storedKey) || '';
-};
-
 export interface SupabaseConfig {
   url: string;
   anonKey: string;
@@ -16,25 +8,26 @@ export interface SupabaseConfig {
 }
 
 export const getSupabaseConfig = (): SupabaseConfig => {
-  const envUrl = import.meta.env.VITE_SUPABASE_URL;
-  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  // Vite replaces static `import.meta.env.VITE_*` variables during production build
+  const envUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || '';
+  const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() || '';
 
-  if (typeof envUrl === 'string' && envUrl.trim() !== '' && typeof envKey === 'string' && envKey.trim() !== '') {
+  if (envUrl && envKey && envUrl.startsWith('http')) {
     return {
-      url: envUrl.trim(),
-      anonKey: envKey.trim(),
+      url: envUrl,
+      anonKey: envKey,
       isConfigured: true,
       source: 'env',
     };
   }
 
-  const customUrl = getEnvOrStored('VITE_SUPABASE_URL', 'supabase_custom_url');
-  const customKey = getEnvOrStored('VITE_SUPABASE_ANON_KEY', 'supabase_custom_anon_key');
+  const customUrl = (localStorage.getItem('supabase_custom_url') || '').trim();
+  const customKey = (localStorage.getItem('supabase_custom_anon_key') || '').trim();
 
   if (customUrl && customKey && customUrl.startsWith('http')) {
     return {
-      url: customUrl.trim(),
-      anonKey: customKey.trim(),
+      url: customUrl,
+      anonKey: customKey,
       isConfigured: true,
       source: 'custom',
     };
@@ -124,3 +117,4 @@ export const testSupabaseConnection = async (url: string, key: string): Promise<
     };
   }
 };
+
