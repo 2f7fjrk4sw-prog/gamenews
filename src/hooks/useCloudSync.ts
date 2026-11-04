@@ -37,9 +37,6 @@ export const useCloudSync = ({
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Unique session ID to ignore our own echoes from Supabase Realtime
-  const [sessionId] = useState<string>(() => Math.random().toString(36).substring(2, 9));
-
   // Keep a stable ref to the latest state
   const latestStateRef = useRef({
     myGameTitle,
@@ -48,11 +45,11 @@ export const useCloudSync = ({
     checklist,
   });
 
-  // Track the timestamp of the last local edit made by the user
   const lastLocalEditRef = useRef<number>(0);
   const isApplyingRemoteRef = useRef(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialLoadDoneRef = useRef(false);
+  const channelRef = useRef<ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>['channel']> | null>(null);
 
   useEffect(() => {
     latestStateRef.current = {
@@ -66,7 +63,7 @@ export const useCloudSync = ({
     }
   }, [myGameTitle, targetDate, competitors, checklist]);
 
-  // Stable pull function
+  // Pull latest snapshot from database
   const pullFromCloud = useCallback(async () => {
     if (isPaused) {
       setSyncStatus('local');
@@ -90,15 +87,15 @@ export const useCloudSync = ({
         .maybeSingle();
 
       if (error) {
-        console.warn('Could not pull from cloud:', error.message);
+        console.warn('Cloud pull error:', error.message);
         setSyncStatus('error');
         setErrorMessage(error.message);
         return;
       }
 
       if (data && data.state) {
-        // If local user has actively edited in the last 4 seconds, protect local input from snap-back
-        if (Date.now() - lastLocalEditRef.current < 4000) {
+        // If local user has edited something in the last 3 seconds, protect local input
+        if (Date.now() - lastLocalEditRef.current < 3000) {
           setSyncStatus('synced');
           return;
         }
@@ -111,7 +108,7 @@ export const useCloudSync = ({
             return;
           }
         }
-        const stateObj = remoteState as SyncedProjectState & { updatedBy?: string };
+        const stateObj = remoteState as SyncedProjectState;
 
         isApplyingRemoteRef.current = true;
 
@@ -138,14 +135,13 @@ export const useCloudSync = ({
 
         setTimeout(() => {
           isApplyingRemoteRef.current = false;
-        }, 500);
+        }, 300);
       } else {
         // Table row does not exist yet; seed it with current local state
         const currentState = latestStateRef.current;
         const initialPayload = {
           ...currentState,
           updatedAt: new Date().toISOString(),
-          updatedBy: sessionId,
         };
 
         await client.from('team_project_state').upsert({
@@ -163,9 +159,9 @@ export const useCloudSync = ({
       setSyncStatus('error');
       setErrorMessage((err as Error).message);
     }
-  }, [isPaused, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, sessionId]);
+  }, [isPaused, setChecklist, setCompetitors, setMyGameTitle, setTargetDate]);
 
-  // Subscribe to Realtime Postgres Changes
+  // Real-time WebSocket Channel: Instant Broadcast (<50ms) + Postgres Changes
   useEffect(() => {
     if (!isCloudEnabled) {
       return;
@@ -187,90 +183,141 @@ export const useCloudSync = ({
 
     initSync();
 
-    const channel = client
-      .channel('team_project_state_realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'team_project_state',
-          filter: 'id=eq.default',
-        },
-        (payload) => {
-          if (!isMounted) return;
+    // Create channel with Broadcast enabled and self-echo disabled
+    const channel = client.channel('team_sync_room', {
+      config: {
+        broadcast: { self: false },
+      },
+    });
 
-          if (payload.new && (payload.new as Record<string, unknown>).state) {
-            let remoteState = (payload.new as Record<string, unknown>).state;
-            if (typeof remoteState === 'string') {
-              try {
-                remoteState = JSON.parse(remoteState);
-              } catch {
-                return;
-              }
-            }
-            const stateObj = remoteState as SyncedProjectState & { updatedBy?: string };
+    channelRef.current = channel;
 
-            // Ignore echoes of changes originating from this tab/session
-            if (stateObj?.updatedBy === sessionId) {
-              return;
-            }
+    // 1. Instant Peer-to-Peer WebSocket Broadcast Event
+    channel.on('broadcast', { event: 'state_update' }, ({ payload }) => {
+      if (!isMounted || !payload) return;
 
-            // If user has edited locally in the last 4 seconds, protect local input from snap-back
-            if (Date.now() - lastLocalEditRef.current < 4000) {
-              return;
-            }
+      // If user has edited locally in the last 2 seconds, do not overwrite active typing
+      if (Date.now() - lastLocalEditRef.current < 2000) {
+        return;
+      }
 
-            isApplyingRemoteRef.current = true;
+      const remoteState = payload as SyncedProjectState;
+      isApplyingRemoteRef.current = true;
 
-            if (stateObj.myGameTitle) {
-              setMyGameTitle(stateObj.myGameTitle);
-              localStorage.setItem('user_game_title', stateObj.myGameTitle);
-            }
-            if (stateObj.targetDate) {
-              setTargetDate(stateObj.targetDate);
-              localStorage.setItem('user_game_target_date', stateObj.targetDate);
-            }
-            if (Array.isArray(stateObj.competitors)) {
-              setCompetitors(stateObj.competitors);
-              localStorage.setItem('game_competitors', JSON.stringify(stateObj.competitors));
-            }
-            if (Array.isArray(stateObj.checklist)) {
-              setChecklist(stateObj.checklist);
-              localStorage.setItem('game_checklist', JSON.stringify(stateObj.checklist));
-            }
+      if (remoteState.myGameTitle) {
+        setMyGameTitle(remoteState.myGameTitle);
+        localStorage.setItem('user_game_title', remoteState.myGameTitle);
+      }
+      if (remoteState.targetDate) {
+        setTargetDate(remoteState.targetDate);
+        localStorage.setItem('user_game_target_date', remoteState.targetDate);
+      }
+      if (Array.isArray(remoteState.competitors)) {
+        setCompetitors(remoteState.competitors);
+        localStorage.setItem('game_competitors', JSON.stringify(remoteState.competitors));
+      }
+      if (Array.isArray(remoteState.checklist)) {
+        setChecklist(remoteState.checklist);
+        localStorage.setItem('game_checklist', JSON.stringify(remoteState.checklist));
+      }
 
-            const now = new Date().toLocaleTimeString('tr-TR');
-            setLastSyncedAt(now);
-            setSyncStatus('synced');
+      const now = new Date().toLocaleTimeString('tr-TR');
+      setLastSyncedAt(now);
+      setSyncStatus('synced');
 
-            setTimeout(() => {
-              isApplyingRemoteRef.current = false;
-            }, 500);
+      setTimeout(() => {
+        isApplyingRemoteRef.current = false;
+      }, 300);
+    });
+
+    // 2. Also listen to PostgreSQL database changes (backup)
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'team_project_state',
+      },
+      (payload) => {
+        if (!isMounted || !payload.new) return;
+        if (Date.now() - lastLocalEditRef.current < 2000) return;
+
+        let remoteState = (payload.new as Record<string, unknown>).state;
+        if (typeof remoteState === 'string') {
+          try {
+            remoteState = JSON.parse(remoteState);
+          } catch {
+            return;
           }
         }
-      )
-      .subscribe((status) => {
-        if (!isMounted) return;
-        if (status === 'SUBSCRIBED') {
-          setSyncStatus('synced');
-        } else if (status === 'CHANNEL_ERROR') {
-          setSyncStatus('error');
+        const stateObj = remoteState as SyncedProjectState;
+
+        isApplyingRemoteRef.current = true;
+
+        if (stateObj.myGameTitle) {
+          setMyGameTitle(stateObj.myGameTitle);
+          localStorage.setItem('user_game_title', stateObj.myGameTitle);
         }
-      });
+        if (stateObj.targetDate) {
+          setTargetDate(stateObj.targetDate);
+          localStorage.setItem('user_game_target_date', stateObj.targetDate);
+        }
+        if (Array.isArray(stateObj.competitors)) {
+          setCompetitors(stateObj.competitors);
+          localStorage.setItem('game_competitors', JSON.stringify(stateObj.competitors));
+        }
+        if (Array.isArray(stateObj.checklist)) {
+          setChecklist(stateObj.checklist);
+          localStorage.setItem('game_checklist', JSON.stringify(stateObj.checklist));
+        }
+
+        const now = new Date().toLocaleTimeString('tr-TR');
+        setLastSyncedAt(now);
+        setSyncStatus('synced');
+
+        setTimeout(() => {
+          isApplyingRemoteRef.current = false;
+        }, 300);
+      }
+    );
+
+    channel.subscribe((status) => {
+      if (!isMounted) return;
+      if (status === 'SUBSCRIBED') {
+        setSyncStatus('synced');
+      } else if (status === 'CHANNEL_ERROR') {
+        setSyncStatus('error');
+      }
+    });
 
     return () => {
       isMounted = false;
       channel.unsubscribe();
+      channelRef.current = null;
     };
-  }, [isCloudEnabled, pullFromCloud, sessionId, setChecklist, setCompetitors, setMyGameTitle, setTargetDate]);
+  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate]);
 
-  // Debounced push of local changes to cloud
+  // Broadcast change immediately to peers + Debounced save to DB
   useEffect(() => {
     if (!isCloudEnabled || !isInitialLoadDoneRef.current || isApplyingRemoteRef.current) {
       return;
     }
 
+    const payload: SyncedProjectState = {
+      ...latestStateRef.current,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 1. Send instantaneous WebSocket broadcast to all connected devices (<50ms)
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'state_update',
+        payload,
+      });
+    }
+
+    // 2. Debounced save to PostgreSQL DB for persistence
     const client = getSupabaseClient();
     if (!client) return;
 
@@ -281,12 +328,6 @@ export const useCloudSync = ({
     debounceTimerRef.current = setTimeout(async () => {
       setSyncStatus('syncing');
       try {
-        const payload = {
-          ...latestStateRef.current,
-          updatedAt: new Date().toISOString(),
-          updatedBy: sessionId,
-        };
-
         const { error } = await client.from('team_project_state').upsert({
           id: 'default',
           state: payload,
@@ -306,14 +347,14 @@ export const useCloudSync = ({
         setSyncStatus('error');
         setErrorMessage((err as Error).message);
       }
-    }, 1000);
+    }, 600);
 
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [myGameTitle, targetDate, competitors, checklist, isCloudEnabled, sessionId]);
+  }, [myGameTitle, targetDate, competitors, checklist, isCloudEnabled]);
 
   const togglePauseSync = useCallback(() => {
     const nextPaused = !isPaused;
