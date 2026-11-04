@@ -15,7 +15,7 @@ import {
   RefreshCw,
   Users
 } from 'lucide-react';
-import type { CloudSyncStatus, TeamMember } from '../types';
+import type { CloudSyncStatus, TeamMember, OnlineUserPresence } from '../types';
 
 export type ActiveTab = 'radar' | 'social' | 'marketing' | 'pitch' | 'checklist' | 'guide' | 'report';
 
@@ -28,6 +28,7 @@ interface NavbarProps {
   openCloudModal?: () => void;
   teamMembers?: TeamMember[];
   currentMemberId?: string;
+  onlineUsers?: OnlineUserPresence[];
   openTeamModal?: () => void;
   onLogout?: () => void;
   openChangePassword?: () => void;
@@ -42,6 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   openCloudModal,
   teamMembers,
   currentMemberId,
+  onlineUsers = [],
   openTeamModal,
   onLogout,
   openChangePassword,
@@ -128,6 +130,29 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Auth / Account Actions */}
         <div className="navbar-auth-actions">
+          {onlineUsers.length > 0 && (
+            <div 
+              className="navbar-presence-pill"
+              onClick={openTeamModal}
+              title={`${onlineUsers.length} kişi şu an canlı sitede: ${onlineUsers.map((u) => u.name).join(', ')}`}
+            >
+              <span className="presence-pulse-dot" />
+              <span className="presence-count">{onlineUsers.length} Çevrim İçi</span>
+              <div className="presence-avatar-stack">
+                {onlineUsers.slice(0, 3).map((u) => (
+                  <span 
+                    key={u.id}
+                    className="stack-avatar" 
+                    style={{ backgroundColor: u.avatarColor }}
+                    title={`${u.name} (${u.role})`}
+                  >
+                    {u.name[0]?.toUpperCase() || 'U'}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {openTeamModal && currentMember && (
             <button 
               className="navbar-icon-btn team-profile-btn"

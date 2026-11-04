@@ -78,6 +78,13 @@ export interface TeamMember {
   joinedAt: string;
 }
 
+export interface OnlineUserPresence {
+  id: string;
+  name: string;
+  role: string;
+  avatarColor: string;
+}
+
 export interface SyncedProjectState {
   myGameTitle: string;
   targetDate: string;

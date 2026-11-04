@@ -2199,6 +2199,69 @@
 }
 
 /* Navbar Team User Badge */
+.navbar-presence-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.35);
+  padding: 4px 8px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.navbar-presence-pill:hover {
+  background: rgba(63, 185, 80, 0.18);
+  border-color: #3fb950;
+}
+
+.presence-pulse-dot {
+  width: 7px;
+  height: 7px;
+  background-color: #3fb950;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #3fb950;
+  animation: pulseGreen 1.8s infinite;
+}
+
+@keyframes pulseGreen {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 5px rgba(63, 185, 80, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(63, 185, 80, 0); }
+}
+
+.presence-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3fb950;
+  white-space: nowrap;
+}
+
+.presence-avatar-stack {
+  display: flex;
+  align-items: center;
+  margin-left: 2px;
+}
+
+.stack-avatar {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  color: #0d1117;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--bg-card);
+  margin-left: -5px;
+}
+
+.stack-avatar:first-child {
+  margin-left: 0;
+}
+
 .navbar-icon-btn.team-profile-btn {
   background: var(--bg-card);
   border-color: rgba(88, 166, 255, 0.35);
@@ -2342,6 +2405,35 @@
   font-weight: 600;
   color: #3fb950;
   background: rgba(63, 185, 80, 0.15);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.badge-online-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #3fb950;
+  background: rgba(63, 185, 80, 0.12);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.online-green-pulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3fb950;
+  box-shadow: 0 0 4px #3fb950;
+}
+
+.badge-offline-dot {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-main);
   padding: 1px 6px;
   border-radius: 10px;
 }

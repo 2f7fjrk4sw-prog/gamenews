@@ -102,12 +102,15 @@ function App() {
     localStorage.setItem('game_team_members', JSON.stringify(teamMembers));
   }, [teamMembers]);
 
+  const currentMember = teamMembers.find((m) => m.id === currentMemberId) || teamMembers[0];
+
   // Real-time Cloud Synchronization (Supabase)
   const {
     syncStatus,
     lastSyncedAt,
     errorMessage: cloudError,
     isPaused,
+    onlineUsers,
     togglePauseSync,
     pullFromCloud,
   } = useCloudSync({
@@ -121,6 +124,7 @@ function App() {
     setChecklist,
     teamMembers,
     setTeamMembers,
+    currentMember,
   });
 
   // Compute collision risk count
@@ -150,6 +154,7 @@ function App() {
             openCloudModal={() => setIsCloudModalOpen(true)}
             teamMembers={teamMembers}
             currentMemberId={currentMemberId}
+            onlineUsers={onlineUsers}
             openTeamModal={() => setIsTeamModalOpen(true)}
             onLogout={onLogout}
             openChangePassword={openChangePassword}
@@ -241,6 +246,7 @@ function App() {
             setTeamMembers={setTeamMembers}
             currentMemberId={currentMemberId}
             setCurrentMemberId={setCurrentMemberId}
+            onlineUsers={onlineUsers}
           />
         </div>
       )}

@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { CompetitorGame, ChecklistItem, CloudSyncStatus, SyncedProjectState, TeamMember } from '../types';
+import type { 
+  CompetitorGame, 
+  ChecklistItem, 
+  CloudSyncStatus, 
+  SyncedProjectState, 
+  TeamMember,
+  OnlineUserPresence 
+} from '../types';
 import { getSupabaseClient, getSupabaseConfig } from '../lib/supabase';
 
 interface UseCloudSyncProps {
@@ -13,6 +20,7 @@ interface UseCloudSyncProps {
   setChecklist: React.Dispatch<React.SetStateAction<ChecklistItem[]>>;
   teamMembers?: TeamMember[];
   setTeamMembers?: React.Dispatch<React.SetStateAction<TeamMember[]>>;
+  currentMember?: TeamMember;
 }
 
 export const useCloudSync = ({
@@ -26,6 +34,7 @@ export const useCloudSync = ({
   setChecklist,
   teamMembers,
   setTeamMembers,
+  currentMember,
 }: UseCloudSyncProps) => {
   const config = getSupabaseConfig();
   const [isPaused, setIsPaused] = useState<boolean>(() => {
@@ -40,6 +49,7 @@ export const useCloudSync = ({
   });
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUserPresence[]>([]);
 
   // Keep a stable ref to the latest state
   const latestStateRef = useRef({
@@ -171,7 +181,7 @@ export const useCloudSync = ({
     }
   }, [isPaused, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers]);
 
-  // Real-time WebSocket Channel: Instant Broadcast (<50ms) + Postgres Changes
+  // Real-time WebSocket Channel: Instant Broadcast (<50ms) + Presence Tracking + Postgres Backup
   useEffect(() => {
     if (!isCloudEnabled) {
       return;
@@ -193,10 +203,11 @@ export const useCloudSync = ({
 
     initSync();
 
-    // Create channel with Broadcast enabled and self-echo disabled
+    // Create channel with Broadcast enabled and Presence tracking
     const channel = client.channel('team_sync_room', {
       config: {
         broadcast: { self: false },
+        presence: { key: currentMember?.id || 'anonymous' },
       },
     });
 
@@ -244,7 +255,30 @@ export const useCloudSync = ({
       }, 300);
     });
 
-    // 2. Also listen to PostgreSQL database changes (backup)
+    // 2. Real-time Presence: Track who is currently on the site
+    channel.on('presence', { event: 'sync' }, () => {
+      if (!isMounted) return;
+      const state = channel.presenceState();
+      const onlineList: OnlineUserPresence[] = [];
+      const seen = new Set<string>();
+
+      for (const pList of Object.values(state)) {
+        for (const p of pList as unknown as OnlineUserPresence[]) {
+          if (p && p.id && !seen.has(p.id)) {
+            seen.add(p.id);
+            onlineList.push({
+              id: p.id,
+              name: p.name || 'Ekip Üyesi',
+              role: p.role || 'Geliştirici',
+              avatarColor: p.avatarColor || '#58a6ff',
+            });
+          }
+        }
+      }
+      setOnlineUsers(onlineList);
+    });
+
+    // 3. PostgreSQL database changes fallback
     channel.on(
       'postgres_changes',
       {
@@ -299,10 +333,19 @@ export const useCloudSync = ({
       }
     );
 
-    channel.subscribe((status) => {
+    channel.subscribe(async (status) => {
       if (!isMounted) return;
       if (status === 'SUBSCRIBED') {
         setSyncStatus('synced');
+        // Track presence immediately after subscribing
+        if (currentMember) {
+          await channel.track({
+            id: currentMember.id,
+            name: currentMember.name,
+            role: currentMember.role,
+            avatarColor: currentMember.avatarColor,
+          });
+        }
       } else if (status === 'CHANNEL_ERROR') {
         setSyncStatus('error');
       }
@@ -313,7 +356,19 @@ export const useCloudSync = ({
       channel.unsubscribe();
       channelRef.current = null;
     };
-  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers]);
+  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers, currentMember]);
+
+  // Update presence tracking if current member profile changes
+  useEffect(() => {
+    if (channelRef.current && currentMember && isCloudEnabled) {
+      channelRef.current.track({
+        id: currentMember.id,
+        name: currentMember.name,
+        role: currentMember.role,
+        avatarColor: currentMember.avatarColor,
+      });
+    }
+  }, [currentMember, isCloudEnabled]);
 
   // Broadcast change immediately to peers + Debounced save to DB
   useEffect(() => {
@@ -372,7 +427,7 @@ export const useCloudSync = ({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [myGameTitle, targetDate, competitors, checklist, isCloudEnabled]);
+  }, [myGameTitle, targetDate, competitors, checklist, teamMembers, isCloudEnabled]);
 
   const togglePauseSync = useCallback(() => {
     const nextPaused = !isPaused;
@@ -392,6 +447,7 @@ export const useCloudSync = ({
     errorMessage,
     isCloudEnabled,
     isPaused,
+    onlineUsers,
     togglePauseSync,
     pullFromCloud,
   };

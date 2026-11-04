@@ -29,3 +29,4 @@ export const initialTeamMembers: TeamMember[] = [
     joinedAt: '2026-11-03',
   },
 ];
+

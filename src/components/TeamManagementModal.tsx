@@ -10,7 +10,7 @@ import {
   CheckCircle2,
   Shield
 } from 'lucide-react';
-import type { TeamMember } from '../types';
+import type { TeamMember, OnlineUserPresence } from '../types';
 
 interface TeamManagementModalProps {
   isOpen: boolean;
@@ -19,6 +19,7 @@ interface TeamManagementModalProps {
   setTeamMembers: React.Dispatch<React.SetStateAction<TeamMember[]>>;
   currentMemberId: string;
   setCurrentMemberId: (id: string) => void;
+  onlineUsers?: OnlineUserPresence[];
 }
 
 const PRESET_ROLES = [
@@ -48,6 +49,7 @@ export const TeamManagementModal: React.FC<TeamManagementModalProps> = ({
   setTeamMembers,
   currentMemberId,
   setCurrentMemberId,
+  onlineUsers = [],
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState('');
@@ -185,6 +187,15 @@ export const TeamManagementModal: React.FC<TeamManagementModalProps> = ({
                       {isCurrent && (
                         <span className="badge-active-user">
                           <CheckCircle2 size={11} /> Aktif Profil (Siz)
+                        </span>
+                      )}
+                      {onlineUsers.some((u) => u.id === member.id) ? (
+                        <span className="badge-online-dot" title="Şu an sitede aktif">
+                          <span className="online-green-pulse" /> Canlı Sitede
+                        </span>
+                      ) : (
+                        <span className="badge-offline-dot" title="Çevrim dışı">
+                          Çevrim Dışı
                         </span>
                       )}
                     </div>
@@ -346,3 +357,4 @@ export const TeamManagementModal: React.FC<TeamManagementModalProps> = ({
     </div>
   );
 };
+
