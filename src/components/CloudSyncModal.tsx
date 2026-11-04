@@ -25,6 +25,8 @@ interface CloudSyncModalProps {
   syncStatus: CloudSyncStatus;
   lastSyncedAt: string | null;
   errorMessage: string | null;
+  isPaused?: boolean;
+  onTogglePause?: () => void;
   onRefresh: () => Promise<void>;
 }
 
@@ -48,6 +50,8 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
   syncStatus,
   lastSyncedAt,
   errorMessage,
+  isPaused = false,
+  onTogglePause,
   onRefresh,
 }) => {
   const config = getSupabaseConfig();
@@ -188,14 +192,21 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
                   <RefreshCw size={14} className={isRefreshing ? 'spin' : ''} />
                   Verileri Yenile
                 </button>
-                {config.source === 'custom' && (
+                {onTogglePause && (
                   <button 
-                    className="clean-btn danger-outline btn-sm"
-                    onClick={handleClear}
+                    className={`clean-btn btn-sm ${isPaused ? 'primary' : 'secondary'}`}
+                    onClick={onTogglePause}
                   >
-                    Bağlantıyı Sıfırla
+                    {isPaused ? '▶️ Bulutu Başlat' : '⏸️ Bulutu Duraklat'}
                   </button>
                 )}
+                <button 
+                  className="clean-btn danger-outline btn-sm"
+                  onClick={handleClear}
+                  title="Ayarları sıfırla ve yerel moda dön"
+                >
+                  Yerel Moda Dön
+                </button>
               </div>
             </div>
           )}

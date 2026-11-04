@@ -23,8 +23,16 @@ export const useCloudSync = ({
   checklist,
   setChecklist,
 }: UseCloudSyncProps) => {
+  const config = getSupabaseConfig();
+  const [isPaused, setIsPaused] = useState<boolean>(() => {
+    return localStorage.getItem('cloud_sync_paused') === 'true';
+  });
+
+  const isCloudEnabled = config.isConfigured && !isPaused;
+
   const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>(() => {
-    return getSupabaseConfig().isConfigured ? 'connecting' : 'local';
+    if (isPaused || !config.isConfigured) return 'local';
+    return 'connecting';
   });
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -32,13 +40,19 @@ export const useCloudSync = ({
   // Unique session ID to ignore our own echoes from Supabase Realtime
   const [sessionId] = useState<string>(() => Math.random().toString(36).substring(2, 9));
 
-  // Keep a stable ref to the latest state so callbacks don't recreate effects
+  // Keep a stable ref to the latest state
   const latestStateRef = useRef({
     myGameTitle,
     targetDate,
     competitors,
     checklist,
   });
+
+  // Track the timestamp of the last local edit made by the user
+  const lastLocalEditRef = useRef<number>(0);
+  const isApplyingRemoteRef = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialLoadDoneRef = useRef(false);
 
   useEffect(() => {
     latestStateRef.current = {
@@ -47,17 +61,18 @@ export const useCloudSync = ({
       competitors,
       checklist,
     };
+    if (!isApplyingRemoteRef.current) {
+      lastLocalEditRef.current = Date.now();
+    }
   }, [myGameTitle, targetDate, competitors, checklist]);
 
-  const isApplyingRemoteRef = useRef(false);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isInitialLoadDoneRef = useRef(false);
-
-  const config = getSupabaseConfig();
-  const isCloudEnabled = config.isConfigured;
-
-  // Stable pull function that does NOT recreate on state changes
+  // Stable pull function
   const pullFromCloud = useCallback(async () => {
+    if (isPaused) {
+      setSyncStatus('local');
+      return;
+    }
+
     const client = getSupabaseClient();
     if (!client) {
       setSyncStatus('local');
@@ -82,24 +97,39 @@ export const useCloudSync = ({
       }
 
       if (data && data.state) {
-        const remoteState = data.state as SyncedProjectState & { updatedBy?: string };
+        // If local user has actively edited in the last 4 seconds, protect local input from snap-back
+        if (Date.now() - lastLocalEditRef.current < 4000) {
+          setSyncStatus('synced');
+          return;
+        }
+
+        let remoteState = data.state;
+        if (typeof remoteState === 'string') {
+          try {
+            remoteState = JSON.parse(remoteState);
+          } catch {
+            return;
+          }
+        }
+        const stateObj = remoteState as SyncedProjectState & { updatedBy?: string };
+
         isApplyingRemoteRef.current = true;
 
-        if (remoteState.myGameTitle) {
-          setMyGameTitle(remoteState.myGameTitle);
-          localStorage.setItem('user_game_title', remoteState.myGameTitle);
+        if (stateObj.myGameTitle) {
+          setMyGameTitle(stateObj.myGameTitle);
+          localStorage.setItem('user_game_title', stateObj.myGameTitle);
         }
-        if (remoteState.targetDate) {
-          setTargetDate(remoteState.targetDate);
-          localStorage.setItem('user_game_target_date', remoteState.targetDate);
+        if (stateObj.targetDate) {
+          setTargetDate(stateObj.targetDate);
+          localStorage.setItem('user_game_target_date', stateObj.targetDate);
         }
-        if (Array.isArray(remoteState.competitors)) {
-          setCompetitors(remoteState.competitors);
-          localStorage.setItem('game_competitors', JSON.stringify(remoteState.competitors));
+        if (Array.isArray(stateObj.competitors)) {
+          setCompetitors(stateObj.competitors);
+          localStorage.setItem('game_competitors', JSON.stringify(stateObj.competitors));
         }
-        if (Array.isArray(remoteState.checklist)) {
-          setChecklist(remoteState.checklist);
-          localStorage.setItem('game_checklist', JSON.stringify(remoteState.checklist));
+        if (Array.isArray(stateObj.checklist)) {
+          setChecklist(stateObj.checklist);
+          localStorage.setItem('game_checklist', JSON.stringify(stateObj.checklist));
         }
 
         const now = new Date().toLocaleTimeString('tr-TR');
@@ -108,7 +138,7 @@ export const useCloudSync = ({
 
         setTimeout(() => {
           isApplyingRemoteRef.current = false;
-        }, 300);
+        }, 500);
       } else {
         // Table row does not exist yet; seed it with current local state
         const currentState = latestStateRef.current;
@@ -133,10 +163,14 @@ export const useCloudSync = ({
       setSyncStatus('error');
       setErrorMessage((err as Error).message);
     }
-  }, [setChecklist, setCompetitors, setMyGameTitle, setTargetDate, sessionId]);
+  }, [isPaused, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, sessionId]);
 
-  // Subscribe ONCE to Realtime Postgres Changes
+  // Subscribe to Realtime Postgres Changes
   useEffect(() => {
+    if (!isCloudEnabled) {
+      return;
+    }
+
     const client = getSupabaseClient();
     if (!client) {
       return;
@@ -167,30 +201,43 @@ export const useCloudSync = ({
           if (!isMounted) return;
 
           if (payload.new && (payload.new as Record<string, unknown>).state) {
-            const remoteState = (payload.new as Record<string, unknown>).state as SyncedProjectState & { updatedBy?: string };
+            let remoteState = (payload.new as Record<string, unknown>).state;
+            if (typeof remoteState === 'string') {
+              try {
+                remoteState = JSON.parse(remoteState);
+              } catch {
+                return;
+              }
+            }
+            const stateObj = remoteState as SyncedProjectState & { updatedBy?: string };
 
             // Ignore echoes of changes originating from this tab/session
-            if (remoteState.updatedBy === sessionId) {
+            if (stateObj?.updatedBy === sessionId) {
+              return;
+            }
+
+            // If user has edited locally in the last 4 seconds, protect local input from snap-back
+            if (Date.now() - lastLocalEditRef.current < 4000) {
               return;
             }
 
             isApplyingRemoteRef.current = true;
 
-            if (remoteState.myGameTitle) {
-              setMyGameTitle(remoteState.myGameTitle);
-              localStorage.setItem('user_game_title', remoteState.myGameTitle);
+            if (stateObj.myGameTitle) {
+              setMyGameTitle(stateObj.myGameTitle);
+              localStorage.setItem('user_game_title', stateObj.myGameTitle);
             }
-            if (remoteState.targetDate) {
-              setTargetDate(remoteState.targetDate);
-              localStorage.setItem('user_game_target_date', remoteState.targetDate);
+            if (stateObj.targetDate) {
+              setTargetDate(stateObj.targetDate);
+              localStorage.setItem('user_game_target_date', stateObj.targetDate);
             }
-            if (Array.isArray(remoteState.competitors)) {
-              setCompetitors(remoteState.competitors);
-              localStorage.setItem('game_competitors', JSON.stringify(remoteState.competitors));
+            if (Array.isArray(stateObj.competitors)) {
+              setCompetitors(stateObj.competitors);
+              localStorage.setItem('game_competitors', JSON.stringify(stateObj.competitors));
             }
-            if (Array.isArray(remoteState.checklist)) {
-              setChecklist(remoteState.checklist);
-              localStorage.setItem('game_checklist', JSON.stringify(remoteState.checklist));
+            if (Array.isArray(stateObj.checklist)) {
+              setChecklist(stateObj.checklist);
+              localStorage.setItem('game_checklist', JSON.stringify(stateObj.checklist));
             }
 
             const now = new Date().toLocaleTimeString('tr-TR');
@@ -199,7 +246,7 @@ export const useCloudSync = ({
 
             setTimeout(() => {
               isApplyingRemoteRef.current = false;
-            }, 300);
+            }, 500);
           }
         }
       )
@@ -216,7 +263,7 @@ export const useCloudSync = ({
       isMounted = false;
       channel.unsubscribe();
     };
-  }, [pullFromCloud, sessionId, setChecklist, setCompetitors, setMyGameTitle, setTargetDate]);
+  }, [isCloudEnabled, pullFromCloud, sessionId, setChecklist, setCompetitors, setMyGameTitle, setTargetDate]);
 
   // Debounced push of local changes to cloud
   useEffect(() => {
@@ -268,11 +315,25 @@ export const useCloudSync = ({
     };
   }, [myGameTitle, targetDate, competitors, checklist, isCloudEnabled, sessionId]);
 
+  const togglePauseSync = useCallback(() => {
+    const nextPaused = !isPaused;
+    if (nextPaused) {
+      localStorage.setItem('cloud_sync_paused', 'true');
+      setSyncStatus('local');
+    } else {
+      localStorage.removeItem('cloud_sync_paused');
+      setSyncStatus('connecting');
+    }
+    setIsPaused(nextPaused);
+  }, [isPaused]);
+
   return {
     syncStatus,
     lastSyncedAt,
     errorMessage,
     isCloudEnabled,
+    isPaused,
+    togglePauseSync,
     pullFromCloud,
   };
 };

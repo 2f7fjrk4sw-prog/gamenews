@@ -82,6 +82,8 @@ function App() {
     syncStatus,
     lastSyncedAt,
     errorMessage: cloudError,
+    isPaused,
+    togglePauseSync,
     pullFromCloud,
   } = useCloudSync({
     myGameTitle,
@@ -197,6 +199,8 @@ function App() {
             syncStatus={syncStatus}
             lastSyncedAt={lastSyncedAt}
             errorMessage={cloudError}
+            isPaused={isPaused}
+            onTogglePause={togglePauseSync}
             onRefresh={pullFromCloud}
           />
         </div>

@@ -142,18 +142,15 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
             <label><Calendar size={14} /> Hedef Çıkış Tarihiniz</label>
             <input 
               type="date"
-              min={todayStr}
               value={targetDate}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val && val < todayStr) {
-                  setTargetDate(todayStr);
-                } else {
-                  setTargetDate(val);
-                }
-              }}
+              onChange={(e) => setTargetDate(e.target.value)}
               className="clean-input"
             />
+            {targetDate && targetDate < todayStr && (
+              <span className="field-hint-warning">
+                <AlertTriangle size={12} /> Seçilen tarih geçmişte kalmış görünüyor
+              </span>
+            )}
           </div>
         </div>
 
