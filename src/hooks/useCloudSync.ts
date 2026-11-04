@@ -29,6 +29,26 @@ export const useCloudSync = ({
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Unique session ID to ignore our own echoes from Supabase Realtime
+  const [sessionId] = useState<string>(() => Math.random().toString(36).substring(2, 9));
+
+  // Keep a stable ref to the latest state so callbacks don't recreate effects
+  const latestStateRef = useRef({
+    myGameTitle,
+    targetDate,
+    competitors,
+    checklist,
+  });
+
+  useEffect(() => {
+    latestStateRef.current = {
+      myGameTitle,
+      targetDate,
+      competitors,
+      checklist,
+    };
+  }, [myGameTitle, targetDate, competitors, checklist]);
+
   const isApplyingRemoteRef = useRef(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialLoadDoneRef = useRef(false);
@@ -36,7 +56,7 @@ export const useCloudSync = ({
   const config = getSupabaseConfig();
   const isCloudEnabled = config.isConfigured;
 
-  // Manual trigger to pull latest data from Supabase
+  // Stable pull function that does NOT recreate on state changes
   const pullFromCloud = useCallback(async () => {
     const client = getSupabaseClient();
     if (!client) {
@@ -62,7 +82,7 @@ export const useCloudSync = ({
       }
 
       if (data && data.state) {
-        const remoteState = data.state as SyncedProjectState;
+        const remoteState = data.state as SyncedProjectState & { updatedBy?: string };
         isApplyingRemoteRef.current = true;
 
         if (remoteState.myGameTitle) {
@@ -88,15 +108,14 @@ export const useCloudSync = ({
 
         setTimeout(() => {
           isApplyingRemoteRef.current = false;
-        }, 500);
+        }, 300);
       } else {
         // Table row does not exist yet; seed it with current local state
-        const initialPayload: SyncedProjectState = {
-          myGameTitle,
-          targetDate,
-          competitors,
-          checklist,
+        const currentState = latestStateRef.current;
+        const initialPayload = {
+          ...currentState,
           updatedAt: new Date().toISOString(),
+          updatedBy: sessionId,
         };
 
         await client.from('team_project_state').upsert({
@@ -110,22 +129,13 @@ export const useCloudSync = ({
         setSyncStatus('synced');
       }
     } catch (err: unknown) {
-      console.error('Error during initial cloud pull:', err);
+      console.error('Error during cloud pull:', err);
       setSyncStatus('error');
       setErrorMessage((err as Error).message);
     }
-  }, [
-    myGameTitle,
-    targetDate,
-    competitors,
-    checklist,
-    setMyGameTitle,
-    setTargetDate,
-    setCompetitors,
-    setChecklist,
-  ]);
+  }, [setChecklist, setCompetitors, setMyGameTitle, setTargetDate, sessionId]);
 
-  // Subscribe to Realtime Postgres Changes
+  // Subscribe ONCE to Realtime Postgres Changes
   useEffect(() => {
     const client = getSupabaseClient();
     if (!client) {
@@ -154,8 +164,16 @@ export const useCloudSync = ({
           filter: 'id=eq.default',
         },
         (payload) => {
+          if (!isMounted) return;
+
           if (payload.new && (payload.new as Record<string, unknown>).state) {
-            const remoteState = (payload.new as Record<string, unknown>).state as SyncedProjectState;
+            const remoteState = (payload.new as Record<string, unknown>).state as SyncedProjectState & { updatedBy?: string };
+
+            // Ignore echoes of changes originating from this tab/session
+            if (remoteState.updatedBy === sessionId) {
+              return;
+            }
+
             isApplyingRemoteRef.current = true;
 
             if (remoteState.myGameTitle) {
@@ -181,11 +199,12 @@ export const useCloudSync = ({
 
             setTimeout(() => {
               isApplyingRemoteRef.current = false;
-            }, 500);
+            }, 300);
           }
         }
       )
       .subscribe((status) => {
+        if (!isMounted) return;
         if (status === 'SUBSCRIBED') {
           setSyncStatus('synced');
         } else if (status === 'CHANNEL_ERROR') {
@@ -197,9 +216,9 @@ export const useCloudSync = ({
       isMounted = false;
       channel.unsubscribe();
     };
-  }, [pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate]);
+  }, [pullFromCloud, sessionId, setChecklist, setCompetitors, setMyGameTitle, setTargetDate]);
 
-  // Push local changes to cloud (Debounced)
+  // Debounced push of local changes to cloud
   useEffect(() => {
     if (!isCloudEnabled || !isInitialLoadDoneRef.current || isApplyingRemoteRef.current) {
       return;
@@ -215,12 +234,10 @@ export const useCloudSync = ({
     debounceTimerRef.current = setTimeout(async () => {
       setSyncStatus('syncing');
       try {
-        const payload: SyncedProjectState = {
-          myGameTitle,
-          targetDate,
-          competitors,
-          checklist,
+        const payload = {
+          ...latestStateRef.current,
           updatedAt: new Date().toISOString(),
+          updatedBy: sessionId,
         };
 
         const { error } = await client.from('team_project_state').upsert({
@@ -242,14 +259,14 @@ export const useCloudSync = ({
         setSyncStatus('error');
         setErrorMessage((err as Error).message);
       }
-    }, 800);
+    }, 1000);
 
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [myGameTitle, targetDate, competitors, checklist, isCloudEnabled]);
+  }, [myGameTitle, targetDate, competitors, checklist, isCloudEnabled, sessionId]);
 
   return {
     syncStatus,
