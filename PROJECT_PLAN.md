@@ -80,8 +80,8 @@ Bu platform, oyun geliştirici ekiplere tek bir gösterge panelinden (dashboard)
 
 ### 📌 FAZ 7: Yayınlama ve Canlıya Alma (Deploy) (Tamamlandı)
 - [x] GitHub reposu oluşturma ve pushlama (https://github.com/2f7fjrk4sw-prog/gamenews)
-- [x] Vercel ile ücretsiz internete açma ve canlıya alma
-- [x] Canlı test ve doğrulama (Ekip şifresi ile korumalı erişim)
+- [x] Vercel ile ücretsiz internete açma ve canlıya alma (Canlı URL: https://gamenews-teal.vercel.app/)
+- [x] Canlı test ve doğrulama (Ekip şifresi ile korumalı erişim - Varsayılan: `friendslop`)
 
 ---
 

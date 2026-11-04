@@ -3,6 +3,9 @@
 > Steam odaklı bağımsız oyun lansman, rakip çakışma analizi ve topluluk pazarlama istihbarat platformu.  
 > **Hedef Tür:** Friendslop / Online Co-Op Party Games (*Lethal Company, Content Warning, Chained Together, Phasmophobia ekolü*).
 
+🌐 **Canlı Uygulama:** [https://gamenews-teal.vercel.app/](https://gamenews-teal.vercel.app/)  
+🔐 **Varsayılan Ekip Şifresi:** `friendslop` *(Giriş sonrası panelden değiştirilebilir)*
+
 ---
 
 ## 📌 Özellikler ve Modüller
