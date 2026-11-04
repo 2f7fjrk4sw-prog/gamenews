@@ -12,9 +12,10 @@ import {
   LogOut,
   CloudCheck,
   CloudOff,
-  RefreshCw
+  RefreshCw,
+  Users
 } from 'lucide-react';
-import type { CloudSyncStatus } from '../types';
+import type { CloudSyncStatus, TeamMember } from '../types';
 
 export type ActiveTab = 'radar' | 'social' | 'marketing' | 'pitch' | 'checklist' | 'guide' | 'report';
 
@@ -25,6 +26,9 @@ interface NavbarProps {
   checklistProgress: number;
   syncStatus?: CloudSyncStatus;
   openCloudModal?: () => void;
+  teamMembers?: TeamMember[];
+  currentMemberId?: string;
+  openTeamModal?: () => void;
   onLogout?: () => void;
   openChangePassword?: () => void;
 }
@@ -36,9 +40,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   checklistProgress,
   syncStatus = 'local',
   openCloudModal,
+  teamMembers,
+  currentMemberId,
+  openTeamModal,
   onLogout,
   openChangePassword,
 }) => {
+  const currentMember = teamMembers?.find((m) => m.id === currentMemberId) || teamMembers?.[0];
   return (
     <header className="clean-navbar">
       <div className="navbar-container">
@@ -120,6 +128,25 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Auth / Account Actions */}
         <div className="navbar-auth-actions">
+          {openTeamModal && currentMember && (
+            <button 
+              className="navbar-icon-btn team-profile-btn"
+              onClick={openTeamModal}
+              title={`Ekip Üyeleri: ${currentMember.name} (${currentMember.role})`}
+            >
+              <span 
+                className="nav-user-avatar-dot"
+                style={{ backgroundColor: currentMember.avatarColor }}
+              >
+                {currentMember.name[0]?.toUpperCase() || 'U'}
+              </span>
+              <span className="btn-hide-mobile nav-user-label">
+                {currentMember.name.split(' ')[0]}
+              </span>
+              <Users size={12} className="nav-team-mini-ico" />
+            </button>
+          )}
+
           {openCloudModal && (
             <button 
               className={`navbar-icon-btn cloud-badge-btn ${syncStatus}`}

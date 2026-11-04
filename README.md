@@ -53,6 +53,12 @@
    - İster Vercel/`.env` ortam değişkenleriyle (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`), ister doğrudan üst menüdeki **"Bulut Senkronizasyon"** modalından 1 tıkla bağlanabilir.
    - Bulut bağlı olmadığında kesintisiz çevrim dışı yerel modda (LocalStorage) çalışmaya devam eder.
 
+10. **👥 Ekip Üyeleri & Kullanıcı Yönetimi (`TeamManagementModal`):**
+    - Yeni ekip arkadaşı ekleme (İsim, Rol, Avatar rengi, Discord/E-posta).
+    - Üst menüde aktif profil rozeti (`👤 Can (Pazarlama)`) ve tek tıkla kullanıcı değiştirme ("Buna Geç").
+    - WhatsApp / Discord için tek tıkla panoya kopyalanabilir hazır ekip davet metni.
+    - Eklenen tüm üyelerin tüm cihazlar arasında anında senkronize edilmesi.
+
 ---
 
 ## 🚀 Kurulum ve Çalıştırma

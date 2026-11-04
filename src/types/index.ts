@@ -68,10 +68,21 @@ export interface SteamFestivalEvent {
 
 export type CloudSyncStatus = 'local' | 'connecting' | 'synced' | 'syncing' | 'error';
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  avatarColor: string;
+  passcode?: string;
+  emailOrDiscord?: string;
+  joinedAt: string;
+}
+
 export interface SyncedProjectState {
   myGameTitle: string;
   targetDate: string;
   competitors: CompetitorGame[];
   checklist: ChecklistItem[];
+  teamMembers?: TeamMember[];
   updatedAt: string;
 }

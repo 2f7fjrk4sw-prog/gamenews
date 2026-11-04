@@ -89,6 +89,13 @@ Bu platform, oyun geliştirici ekiplere tek bir gösterge panelinden (dashboard)
 - [x] **Bulut Durum Göstergesi:** Üst menüde Canlı Senkronizasyon rozeti (🟢 Bulut Canlı / 🟡 Yerel Mod)
 - [x] **Kolay Kurulum Arayüzü (`CloudSyncModal`):** Tek tıkla SQL kodunu kopyalama, bağlantı testi ve tarayıcıdan/Vercel'den anahtar tanımlayabilme
 
+### 📌 FAZ 9: Ekip Üyeleri & Kullanıcı Yönetimi (`TeamManagementModal`) (Tamamlandı)
+- [x] **Çoklu Kullanıcı Desteği:** İsim, rol, avatar rengi ve iletişim bilgisiyle yeni ekip üyeleri ekleyebilme/çıkarabilme
+- [x] **Aktif Profil & Kullanıcı Değiştirme:** Üst menüden aktif kullanıcıyı seçebilme ("Buna Geç")
+- [x] **Önceden Tanımlı ve Özel Roller:** Oyun Tasarımcısı, Pazarlama Lideri, Co-Op Geliştirici, TikTok/Discord Yöneticisi vb.
+- [x] **Tek Tıkla Ekip Daveti:** WhatsApp/Discord için hazır giriş linki ve şifre davet metnini panoya kopyalama
+- [x] **Gerçek Zamanlı Kullanıcı Senkronizasyonu:** Eklenen veya silinen kullanıcıların anında tüm cihazlara yansıması
+
 ---
 
 ## 4. 💡 Friendslop Türü İçin Özel Pazarlama Taktikleri Veritabanı

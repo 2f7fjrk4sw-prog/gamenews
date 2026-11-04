@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import type { CompetitorGame, ChecklistItem } from './types';
+import type { CompetitorGame, ChecklistItem, TeamMember } from './types';
 import { initialCompetitors } from './data/competitors';
 import { initialChecklist } from './data/launchChecklist';
+import { initialTeamMembers } from './data/teamMembers';
 import { marketingChannels } from './data/marketingChannels';
 import { pitchTemplates } from './data/pitchTemplates';
 import { steamFestivals } from './data/steamFestivals';
@@ -16,6 +17,7 @@ import { GuideSection } from './components/GuideSection';
 import { ReportExportSection } from './components/ReportExportSection';
 import { AuthGate } from './components/AuthGate';
 import { CloudSyncModal } from './components/CloudSyncModal';
+import { TeamManagementModal } from './components/TeamManagementModal';
 import { useCloudSync } from './hooks/useCloudSync';
 
 import './App.css';
@@ -69,6 +71,25 @@ function App() {
     return initialChecklist;
   });
 
+  // Team Members Data (Persistent in localStorage & Supabase)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(() => {
+    const saved = localStorage.getItem('game_team_members');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error loading saved team members', e);
+      }
+    }
+    return initialTeamMembers;
+  });
+
+  const [currentMemberId, setCurrentMemberId] = useState<string>(() => {
+    return localStorage.getItem('current_team_member_id') || 'member-lead';
+  });
+
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
   useEffect(() => {
     localStorage.setItem('user_game_target_date', targetDate);
   }, [targetDate]);
@@ -76,6 +97,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('user_game_title', myGameTitle);
   }, [myGameTitle]);
+
+  useEffect(() => {
+    localStorage.setItem('game_team_members', JSON.stringify(teamMembers));
+  }, [teamMembers]);
 
   // Real-time Cloud Synchronization (Supabase)
   const {
@@ -94,6 +119,8 @@ function App() {
     setCompetitors,
     checklist,
     setChecklist,
+    teamMembers,
+    setTeamMembers,
   });
 
   // Compute collision risk count
@@ -121,6 +148,9 @@ function App() {
             checklistProgress={checklistProgress}
             syncStatus={syncStatus}
             openCloudModal={() => setIsCloudModalOpen(true)}
+            teamMembers={teamMembers}
+            currentMemberId={currentMemberId}
+            openTeamModal={() => setIsTeamModalOpen(true)}
             onLogout={onLogout}
             openChangePassword={openChangePassword}
           />
@@ -202,6 +232,15 @@ function App() {
             isPaused={isPaused}
             onTogglePause={togglePauseSync}
             onRefresh={pullFromCloud}
+          />
+
+          <TeamManagementModal 
+            isOpen={isTeamModalOpen}
+            onClose={() => setIsTeamModalOpen(false)}
+            teamMembers={teamMembers}
+            setTeamMembers={setTeamMembers}
+            currentMemberId={currentMemberId}
+            setCurrentMemberId={setCurrentMemberId}
           />
         </div>
       )}

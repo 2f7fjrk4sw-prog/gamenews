@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { CompetitorGame, ChecklistItem, CloudSyncStatus, SyncedProjectState } from '../types';
+import type { CompetitorGame, ChecklistItem, CloudSyncStatus, SyncedProjectState, TeamMember } from '../types';
 import { getSupabaseClient, getSupabaseConfig } from '../lib/supabase';
 
 interface UseCloudSyncProps {
@@ -11,6 +11,8 @@ interface UseCloudSyncProps {
   setCompetitors: React.Dispatch<React.SetStateAction<CompetitorGame[]>>;
   checklist: ChecklistItem[];
   setChecklist: React.Dispatch<React.SetStateAction<ChecklistItem[]>>;
+  teamMembers?: TeamMember[];
+  setTeamMembers?: React.Dispatch<React.SetStateAction<TeamMember[]>>;
 }
 
 export const useCloudSync = ({
@@ -22,6 +24,8 @@ export const useCloudSync = ({
   setCompetitors,
   checklist,
   setChecklist,
+  teamMembers,
+  setTeamMembers,
 }: UseCloudSyncProps) => {
   const config = getSupabaseConfig();
   const [isPaused, setIsPaused] = useState<boolean>(() => {
@@ -43,6 +47,7 @@ export const useCloudSync = ({
     targetDate,
     competitors,
     checklist,
+    teamMembers,
   });
 
   const lastLocalEditRef = useRef<number>(0);
@@ -57,11 +62,12 @@ export const useCloudSync = ({
       targetDate,
       competitors,
       checklist,
+      teamMembers,
     };
     if (!isApplyingRemoteRef.current) {
       lastLocalEditRef.current = Date.now();
     }
-  }, [myGameTitle, targetDate, competitors, checklist]);
+  }, [myGameTitle, targetDate, competitors, checklist, teamMembers]);
 
   // Pull latest snapshot from database
   const pullFromCloud = useCallback(async () => {
@@ -128,6 +134,10 @@ export const useCloudSync = ({
           setChecklist(stateObj.checklist);
           localStorage.setItem('game_checklist', JSON.stringify(stateObj.checklist));
         }
+        if (Array.isArray(stateObj.teamMembers) && setTeamMembers) {
+          setTeamMembers(stateObj.teamMembers);
+          localStorage.setItem('game_team_members', JSON.stringify(stateObj.teamMembers));
+        }
 
         const now = new Date().toLocaleTimeString('tr-TR');
         setLastSyncedAt(now);
@@ -159,7 +169,7 @@ export const useCloudSync = ({
       setSyncStatus('error');
       setErrorMessage((err as Error).message);
     }
-  }, [isPaused, setChecklist, setCompetitors, setMyGameTitle, setTargetDate]);
+  }, [isPaused, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers]);
 
   // Real-time WebSocket Channel: Instant Broadcast (<50ms) + Postgres Changes
   useEffect(() => {
@@ -220,6 +230,10 @@ export const useCloudSync = ({
         setChecklist(remoteState.checklist);
         localStorage.setItem('game_checklist', JSON.stringify(remoteState.checklist));
       }
+      if (Array.isArray(remoteState.teamMembers) && setTeamMembers) {
+        setTeamMembers(remoteState.teamMembers);
+        localStorage.setItem('game_team_members', JSON.stringify(remoteState.teamMembers));
+      }
 
       const now = new Date().toLocaleTimeString('tr-TR');
       setLastSyncedAt(now);
@@ -270,6 +284,10 @@ export const useCloudSync = ({
           setChecklist(stateObj.checklist);
           localStorage.setItem('game_checklist', JSON.stringify(stateObj.checklist));
         }
+        if (Array.isArray(stateObj.teamMembers) && setTeamMembers) {
+          setTeamMembers(stateObj.teamMembers);
+          localStorage.setItem('game_team_members', JSON.stringify(stateObj.teamMembers));
+        }
 
         const now = new Date().toLocaleTimeString('tr-TR');
         setLastSyncedAt(now);
@@ -295,7 +313,7 @@ export const useCloudSync = ({
       channel.unsubscribe();
       channelRef.current = null;
     };
-  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate]);
+  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers]);
 
   // Broadcast change immediately to peers + Debounced save to DB
   useEffect(() => {
