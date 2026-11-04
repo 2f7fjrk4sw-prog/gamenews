@@ -32,6 +32,15 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
   const [filterMode, setFilterMode] = useState<'all' | 'risk' | 'safe'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Today's date in YYYY-MM-DD for minimum date restriction
+  const [todayStr] = useState<string>(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+
   // Form State for Adding New Competitor
   const [newTitle, setNewTitle] = useState('');
   const [newDev, setNewDev] = useState('');
@@ -133,8 +142,16 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
             <label><Calendar size={14} /> Hedef Çıkış Tarihiniz</label>
             <input 
               type="date"
+              min={todayStr}
               value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val && val < todayStr) {
+                  setTargetDate(todayStr);
+                } else {
+                  setTargetDate(val);
+                }
+              }}
               className="clean-input"
             />
           </div>
@@ -308,6 +325,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                   <input 
                     type="date" 
                     required 
+                    min={todayStr}
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
                   />

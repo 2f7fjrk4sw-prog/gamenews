@@ -23,7 +23,17 @@ function App() {
 
   // Developer's Game Configuration (Persistent in localStorage)
   const [targetDate, setTargetDate] = useState<string>(() => {
-    return localStorage.getItem('user_game_target_date') || '2026-11-20';
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    const saved = localStorage.getItem('user_game_target_date');
+    if (saved && saved >= todayStr) {
+      return saved;
+    }
+    return '2026-11-20' >= todayStr ? '2026-11-20' : todayStr;
   });
 
   const [myGameTitle, setMyGameTitle] = useState<string>(() => {
