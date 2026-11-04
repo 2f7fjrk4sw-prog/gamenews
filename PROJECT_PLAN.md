@@ -83,6 +83,12 @@ Bu platform, oyun geliştirici ekiplere tek bir gösterge panelinden (dashboard)
 - [x] Vercel ile ücretsiz internete açma ve canlıya alma (Canlı URL: https://gamenews-teal.vercel.app/)
 - [x] Canlı test ve doğrulama (Ekip şifresi ile korumalı erişim - Varsayılan: `friendslop`)
 
+### 📌 FAZ 8: Canlı Ekip Bulut Senkronizasyonu (Supabase Realtime) (Tamamlandı)
+- [x] **Hibrit Mimari:** Çevrim dışı yerel hafıza (LocalStorage) + Canlı Bulut Senkronizasyonu (Supabase)
+- [x] **Gerçek Zamanlı Veri Senkronizasyonu (Realtime):** Bir ekip üyesi isim, tarih veya görev değiştirdiğinde diğer üyelerin ekranında anında güncellenmesi
+- [x] **Bulut Durum Göstergesi:** Üst menüde Canlı Senkronizasyon rozeti (🟢 Bulut Canlı / 🟡 Yerel Mod)
+- [x] **Kolay Kurulum Arayüzü (`CloudSyncModal`):** Tek tıkla SQL kodunu kopyalama, bağlantı testi ve tarayıcıdan/Vercel'den anahtar tanımlayabilme
+
 ---
 
 ## 4. 💡 Friendslop Türü İçin Özel Pazarlama Taktikleri Veritabanı

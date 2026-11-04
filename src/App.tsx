@@ -15,11 +15,14 @@ import { ChecklistSection } from './components/ChecklistSection';
 import { GuideSection } from './components/GuideSection';
 import { ReportExportSection } from './components/ReportExportSection';
 import { AuthGate } from './components/AuthGate';
+import { CloudSyncModal } from './components/CloudSyncModal';
+import { useCloudSync } from './hooks/useCloudSync';
 
 import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('radar');
+  const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
 
   // Developer's Game Configuration (Persistent in localStorage)
   const [targetDate, setTargetDate] = useState<string>(() => {
@@ -74,6 +77,23 @@ function App() {
     localStorage.setItem('user_game_title', myGameTitle);
   }, [myGameTitle]);
 
+  // Real-time Cloud Synchronization (Supabase)
+  const {
+    syncStatus,
+    lastSyncedAt,
+    errorMessage: cloudError,
+    pullFromCloud,
+  } = useCloudSync({
+    myGameTitle,
+    setMyGameTitle,
+    targetDate,
+    setTargetDate,
+    competitors,
+    setCompetitors,
+    checklist,
+    setChecklist,
+  });
+
   // Compute collision risk count
   const criticalCollisionsCount = competitors.filter((comp) => {
     const compTime = new Date(comp.releaseDate).getTime();
@@ -97,6 +117,8 @@ function App() {
             setActiveTab={setActiveTab}
             criticalCollisionsCount={criticalCollisionsCount}
             checklistProgress={checklistProgress}
+            syncStatus={syncStatus}
+            openCloudModal={() => setIsCloudModalOpen(true)}
             onLogout={onLogout}
             openChangePassword={openChangePassword}
           />
@@ -163,9 +185,20 @@ function App() {
           <footer className="clean-footer">
             <div className="footer-inner">
               <span>GameLaunch Radar — Steam Co-Op & Friendslop Marketing</span>
-              <span className="footer-mute">Yerel ve Çevrim Dışı Öncelikli</span>
+              <span className="footer-mute">
+                {syncStatus === 'synced' ? '🟢 Bulut Senkronizasyonu Aktif' : '🟡 Yerel ve Çevrim Dışı Öncelikli'}
+              </span>
             </div>
           </footer>
+
+          <CloudSyncModal 
+            isOpen={isCloudModalOpen}
+            onClose={() => setIsCloudModalOpen(false)}
+            syncStatus={syncStatus}
+            lastSyncedAt={lastSyncedAt}
+            errorMessage={cloudError}
+            onRefresh={pullFromCloud}
+          />
         </div>
       )}
     </AuthGate>

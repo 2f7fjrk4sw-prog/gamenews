@@ -65,3 +65,13 @@ export interface SteamFestivalEvent {
   developerAction: string;
   impactLevel: 'Extreme' | 'High' | 'Medium';
 }
+
+export type CloudSyncStatus = 'local' | 'connecting' | 'synced' | 'syncing' | 'error';
+
+export interface SyncedProjectState {
+  myGameTitle: string;
+  targetDate: string;
+  competitors: CompetitorGame[];
+  checklist: ChecklistItem[];
+  updatedAt: string;
+}

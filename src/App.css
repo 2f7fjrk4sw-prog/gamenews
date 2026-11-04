@@ -1859,3 +1859,332 @@
     display: none;
   }
 }
+
+/* Cloud Sync Badge in Navbar */
+.navbar-icon-btn.cloud-badge-btn {
+  background: var(--bg-card);
+}
+
+.cloud-badge-btn.synced {
+  border-color: rgba(63, 185, 80, 0.4);
+  color: #3fb950;
+}
+
+.cloud-badge-btn.synced:hover {
+  background: rgba(63, 185, 80, 0.1);
+  border-color: #3fb950;
+}
+
+.cloud-badge-btn.syncing,
+.cloud-badge-btn.connecting {
+  border-color: rgba(88, 166, 255, 0.4);
+  color: #58a6ff;
+}
+
+.cloud-badge-btn.local {
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.cloud-badge-btn.local:hover {
+  color: var(--text-secondary);
+}
+
+.cloud-badge-btn.error {
+  border-color: rgba(248, 81, 73, 0.4);
+  color: #ff7b72;
+}
+
+.sync-ico.success {
+  color: #3fb950;
+}
+
+.sync-ico.spin {
+  color: #58a6ff;
+  animation: spin 1s linear infinite;
+}
+
+.sync-ico.neutral {
+  color: var(--text-muted);
+}
+
+.sync-ico.danger {
+  color: #ff7b72;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Clean Modal (General & Cloud) */
+.clean-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(1, 4, 9, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.clean-modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.clean-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-title-with-ico {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-title-with-ico h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.clean-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.clean-close-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-subtle);
+}
+
+.clean-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Cloud Status Banner */
+.cloud-status-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+
+.cloud-status-banner.synced {
+  background: rgba(63, 185, 80, 0.08);
+  border-color: rgba(63, 185, 80, 0.3);
+}
+
+.cloud-status-banner.synced strong {
+  color: #3fb950;
+}
+
+.cloud-status-banner.syncing,
+.cloud-status-banner.connecting {
+  background: rgba(88, 166, 255, 0.08);
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+.cloud-status-banner.syncing strong,
+.cloud-status-banner.connecting strong {
+  color: #58a6ff;
+}
+
+.cloud-status-banner.local strong {
+  color: var(--text-main);
+}
+
+.cloud-status-banner.error {
+  background: rgba(248, 81, 73, 0.08);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+
+.cloud-status-banner.error strong {
+  color: #ff7b72;
+}
+
+.cloud-status-banner p {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 3px 0 0;
+  line-height: 1.4;
+}
+
+.cloud-status-banner small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Active Details */
+.cloud-active-details {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cloud-active-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.cloud-active-row code {
+  background: var(--bg-main);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #58a6ff;
+  font-size: 11.5px;
+}
+
+.badge-source {
+  background: rgba(88, 166, 255, 0.15);
+  color: #58a6ff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.cloud-active-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Form */
+.cloud-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cloud-config-form h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+/* SQL Box */
+.cloud-sql-box {
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cloud-sql-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.copy-sql-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.copy-sql-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-main);
+}
+
+.cloud-sql-code {
+  background: #090d13;
+  color: #7ee787;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-x: auto;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.cloud-guide-note {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cloud-guide-note a {
+  color: #58a6ff;
+  text-decoration: underline;
+}
+
+.clean-alert-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.clean-alert-inline.alert-success {
+  background: rgba(63, 185, 80, 0.1);
+  color: #3fb950;
+  border: 1px solid rgba(63, 185, 80, 0.3);
+}
+
+.clean-alert-inline.alert-danger {
+  background: rgba(248, 81, 73, 0.1);
+  color: #ff7b72;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+}

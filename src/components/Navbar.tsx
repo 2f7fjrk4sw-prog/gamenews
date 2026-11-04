@@ -9,8 +9,12 @@ import {
   Smartphone,
   FileDown,
   KeyRound,
-  LogOut
+  LogOut,
+  CloudCheck,
+  CloudOff,
+  RefreshCw
 } from 'lucide-react';
+import type { CloudSyncStatus } from '../types';
 
 export type ActiveTab = 'radar' | 'social' | 'marketing' | 'pitch' | 'checklist' | 'guide' | 'report';
 
@@ -19,6 +23,8 @@ interface NavbarProps {
   setActiveTab: (tab: ActiveTab) => void;
   criticalCollisionsCount: number;
   checklistProgress: number;
+  syncStatus?: CloudSyncStatus;
+  openCloudModal?: () => void;
   onLogout?: () => void;
   openChangePassword?: () => void;
 }
@@ -28,6 +34,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   criticalCollisionsCount,
   checklistProgress,
+  syncStatus = 'local',
+  openCloudModal,
   onLogout,
   openChangePassword,
 }) => {
@@ -112,6 +120,26 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Auth / Account Actions */}
         <div className="navbar-auth-actions">
+          {openCloudModal && (
+            <button 
+              className={`navbar-icon-btn cloud-badge-btn ${syncStatus}`}
+              onClick={openCloudModal}
+              title="Ekip Bulut Senkronizasyon Ayarları"
+            >
+              {syncStatus === 'synced' && <CloudCheck size={14} className="sync-ico success" />}
+              {(syncStatus === 'syncing' || syncStatus === 'connecting') && <RefreshCw size={14} className="sync-ico spin" />}
+              {syncStatus === 'local' && <CloudOff size={14} className="sync-ico neutral" />}
+              {syncStatus === 'error' && <AlertCircle size={14} className="sync-ico danger" />}
+              <span className="btn-hide-mobile">
+                {syncStatus === 'synced' && 'Bulut Canlı'}
+                {syncStatus === 'syncing' && 'Eşitleniyor'}
+                {syncStatus === 'connecting' && 'Bağlanıyor'}
+                {syncStatus === 'local' && 'Yerel Mod'}
+                {syncStatus === 'error' && 'Bulut Hatası'}
+              </span>
+            </button>
+          )}
+
           {openChangePassword && (
             <button 
               className="navbar-icon-btn" 

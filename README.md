@@ -48,6 +48,11 @@
    - Varsayılan şifre: `friendslop` (Navbar üzerinden dilediğiniz zaman değiştirilebilir).
    - "Beni Hatırla" ve tek tıkla oturum kapatma (Logout).
 
+9. **☁️ Canlı Ekip Bulut Senkronizasyonu (`CloudSyncModal` & Supabase Realtime):**
+   - **Google Docs tarzı anlık senkronizasyon:** Bir ekip üyesi oyun adı, tarih veya kontrol listesini değiştirdiğinde diğer ekip üyelerinin ekranında anında güncellenir.
+   - İster Vercel/`.env` ortam değişkenleriyle (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`), ister doğrudan üst menüdeki **"Bulut Senkronizasyon"** modalından 1 tıkla bağlanabilir.
+   - Bulut bağlı olmadığında kesintisiz çevrim dışı yerel modda (LocalStorage) çalışmaya devam eder.
+
 ---
 
 ## 🚀 Kurulum ve Çalıştırma
