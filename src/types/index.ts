@@ -79,10 +79,12 @@ export interface TeamMember {
 }
 
 export interface OnlineUserPresence {
+  sessionId: string;
   id: string;
   name: string;
   role: string;
   avatarColor: string;
+  isMe?: boolean;
 }
 
 export interface SyncedProjectState {

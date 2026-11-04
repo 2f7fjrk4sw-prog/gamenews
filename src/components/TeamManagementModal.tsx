@@ -192,6 +192,11 @@ export const TeamManagementModal: React.FC<TeamManagementModalProps> = ({
                       {onlineUsers.some((u) => u.id === member.id) ? (
                         <span className="badge-online-dot" title="Şu an sitede aktif">
                           <span className="online-green-pulse" /> Canlı Sitede
+                          {onlineUsers.filter((u) => u.id === member.id).length > 1 && (
+                            <span className="badge-device-count">
+                              ({onlineUsers.filter((u) => u.id === member.id).length} cihaz)
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <span className="badge-offline-dot" title="Çevrim dışı">

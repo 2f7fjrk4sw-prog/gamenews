@@ -2262,6 +2262,13 @@
   margin-left: 0;
 }
 
+.stack-avatar.stack-avatar-more {
+  background: var(--border);
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 600;
+}
+
 .navbar-icon-btn.team-profile-btn {
   background: var(--bg-card);
   border-color: rgba(88, 166, 255, 0.35);
@@ -2420,6 +2427,13 @@
   padding: 1px 6px;
   border-radius: 10px;
   font-weight: 600;
+}
+
+.badge-device-count {
+  font-size: 9px;
+  opacity: 0.85;
+  font-weight: 500;
+  margin-left: 1px;
 }
 
 .online-green-pulse {

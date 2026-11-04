@@ -141,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="presence-avatar-stack">
                 {onlineUsers.slice(0, 3).map((u) => (
                   <span 
-                    key={u.id}
+                    key={u.sessionId}
                     className="stack-avatar" 
                     style={{ backgroundColor: u.avatarColor }}
                     title={`${u.name} (${u.role})`}
@@ -149,6 +149,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {u.name[0]?.toUpperCase() || 'U'}
                   </span>
                 ))}
+                {onlineUsers.length > 3 && (
+                  <span 
+                    className="stack-avatar stack-avatar-more" 
+                    title={`+${onlineUsers.length - 3} kişi daha sitede`}
+                  >
+                    +{onlineUsers.length - 3}
+                  </span>
+                )}
               </div>
             </div>
           )}

@@ -43,6 +43,19 @@ export const useCloudSync = ({
 
   const isCloudEnabled = config.isConfigured && !isPaused;
 
+  // Unique session ID per browser tab/device to allow accurate multi-device presence tracking
+  const [clientSessionId] = useState<string>(() => {
+    try {
+      const existing = sessionStorage.getItem('app_presence_session_id');
+      if (existing) return existing;
+      const newId = 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+      sessionStorage.setItem('app_presence_session_id', newId);
+      return newId;
+    } catch {
+      return 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+    }
+  });
+
   const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>(() => {
     if (isPaused || !config.isConfigured) return 'local';
     return 'connecting';
@@ -50,6 +63,12 @@ export const useCloudSync = ({
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUserPresence[]>([]);
+
+  // Keep a stable ref to the current member so channel re-subscriptions don't churn
+  const currentMemberRef = useRef(currentMember);
+  useEffect(() => {
+    currentMemberRef.current = currentMember;
+  }, [currentMember]);
 
   // Keep a stable ref to the latest state
   const latestStateRef = useRef({
@@ -203,11 +222,11 @@ export const useCloudSync = ({
 
     initSync();
 
-    // Create channel with Broadcast enabled and Presence tracking
+    // Create channel with Broadcast enabled and Presence tracking keyed by clientSessionId
     const channel = client.channel('team_sync_room', {
       config: {
         broadcast: { self: false },
-        presence: { key: currentMember?.id || 'anonymous' },
+        presence: { key: clientSessionId },
       },
     });
 
@@ -255,28 +274,73 @@ export const useCloudSync = ({
       }, 300);
     });
 
-    // 2. Real-time Presence: Track who is currently on the site
-    channel.on('presence', { event: 'sync' }, () => {
+    // 2. Real-time Presence: Track all connected devices / team members
+    const updatePresenceList = () => {
       if (!isMounted) return;
       const state = channel.presenceState();
       const onlineList: OnlineUserPresence[] = [];
-      const seen = new Set<string>();
+      const seenSessions = new Set<string>();
 
-      for (const pList of Object.values(state)) {
-        for (const p of pList as unknown as OnlineUserPresence[]) {
-          if (p && p.id && !seen.has(p.id)) {
-            seen.add(p.id);
+      // Count occurrences of each member ID across distinct sessions
+      const profileCounts: Record<string, number> = {};
+      for (const presences of Object.values(state)) {
+        for (const raw of presences as unknown as OnlineUserPresence[]) {
+          const sId = raw.sessionId;
+          if (sId && !seenSessions.has(sId)) {
+            seenSessions.add(sId);
+            const pId = raw.id || 'anonymous';
+            profileCounts[pId] = (profileCounts[pId] || 0) + 1;
+          }
+        }
+      }
+
+      seenSessions.clear();
+      const deviceCounter: Record<string, number> = {};
+
+      for (const [key, presences] of Object.entries(state)) {
+        for (const raw of presences as unknown as OnlineUserPresence[]) {
+          const sId = raw.sessionId || key;
+          if (sId && !seenSessions.has(sId)) {
+            seenSessions.add(sId);
+
+            const isMe = sId === clientSessionId;
+            const pId = raw.id || 'anonymous';
+            let displayName = raw.name || 'Ekip Üyesi';
+
+            // If multiple devices share the same profile (e.g. default "Sen (Proje Lideri)"),
+            // differentiate them cleanly so it is clear there are multiple devices online
+            if ((profileCounts[pId] || 0) > 1) {
+              deviceCounter[pId] = (deviceCounter[pId] || 0) + 1;
+              const devNum = deviceCounter[pId];
+              if (isMe) {
+                displayName = `${displayName} (Bu Cihaz)`;
+              } else {
+                displayName = `${displayName} (Cihaz #${devNum})`;
+              }
+            } else if (isMe) {
+              displayName = `${displayName} (Siz)`;
+            }
+
             onlineList.push({
-              id: p.id,
-              name: p.name || 'Ekip Üyesi',
-              role: p.role || 'Geliştirici',
-              avatarColor: p.avatarColor || '#58a6ff',
+              sessionId: sId,
+              id: pId,
+              name: displayName,
+              role: raw.role || 'Geliştirici',
+              avatarColor: raw.avatarColor || '#58a6ff',
+              isMe,
             });
           }
         }
       }
+
+      // Sort so current client device is first
+      onlineList.sort((a, b) => (b.isMe ? 1 : 0) - (a.isMe ? 1 : 0));
       setOnlineUsers(onlineList);
-    });
+    };
+
+    channel.on('presence', { event: 'sync' }, updatePresenceList);
+    channel.on('presence', { event: 'join' }, updatePresenceList);
+    channel.on('presence', { event: 'leave' }, updatePresenceList);
 
     // 3. PostgreSQL database changes fallback
     channel.on(
@@ -337,38 +401,48 @@ export const useCloudSync = ({
       if (!isMounted) return;
       if (status === 'SUBSCRIBED') {
         setSyncStatus('synced');
-        // Track presence immediately after subscribing
-        if (currentMember) {
-          await channel.track({
-            id: currentMember.id,
-            name: currentMember.name,
-            role: currentMember.role,
-            avatarColor: currentMember.avatarColor,
-          });
-        }
+        // Track presence immediately with unique sessionId
+        const member = currentMemberRef.current;
+        await channel.track({
+          sessionId: clientSessionId,
+          id: member?.id || 'anonymous',
+          name: member?.name || 'Ekip Üyesi',
+          role: member?.role || 'Geliştirici',
+          avatarColor: member?.avatarColor || '#58a6ff',
+        });
       } else if (status === 'CHANNEL_ERROR') {
         setSyncStatus('error');
       }
     });
 
+    const handleBeforeUnload = () => {
+      if (channelRef.current) {
+        channelRef.current.untrack();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      channel.untrack();
       channel.unsubscribe();
       channelRef.current = null;
     };
-  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers, currentMember]);
+  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers, clientSessionId]);
 
-  // Update presence tracking if current member profile changes
+  // Update presence tracking if current member profile changes without recreating channel
   useEffect(() => {
     if (channelRef.current && currentMember && isCloudEnabled) {
       channelRef.current.track({
+        sessionId: clientSessionId,
         id: currentMember.id,
         name: currentMember.name,
         role: currentMember.role,
         avatarColor: currentMember.avatarColor,
       });
     }
-  }, [currentMember, isCloudEnabled]);
+  }, [currentMember, isCloudEnabled, clientSessionId]);
 
   // Broadcast change immediately to peers + Debounced save to DB
   useEffect(() => {
