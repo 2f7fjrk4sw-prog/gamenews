@@ -15,7 +15,8 @@ import {
   getSupabaseConfig, 
   saveCustomSupabaseConfig, 
   clearCustomSupabaseConfig,
-  testSupabaseConnection 
+  testSupabaseConnection,
+  sanitizeSupabaseUrl 
 } from '../lib/supabase';
 
 interface CloudSyncModalProps {
@@ -67,7 +68,10 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
 
   const handleTestAndSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!urlInput.trim() || !keyInput.trim()) {
+    const cleanUrl = sanitizeSupabaseUrl(urlInput);
+    setUrlInput(cleanUrl);
+
+    if (!cleanUrl || !keyInput.trim()) {
       setTestResult({ success: false, message: 'Lütfen hem URL hem de Anon Key alanlarını doldurun.' });
       return;
     }
@@ -75,12 +79,12 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
     setIsTesting(true);
     setTestResult(null);
 
-    const res = await testSupabaseConnection(urlInput, keyInput);
+    const res = await testSupabaseConnection(cleanUrl, keyInput.trim());
     setIsTesting(false);
     setTestResult(res);
 
     if (res.success) {
-      saveCustomSupabaseConfig(urlInput, keyInput);
+      saveCustomSupabaseConfig(cleanUrl, keyInput.trim());
       await onRefresh();
     }
   };

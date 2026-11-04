@@ -41,8 +41,31 @@ export const getSupabaseConfig = (): SupabaseConfig => {
   };
 };
 
+export const sanitizeSupabaseUrl = (input: string): string => {
+  let cleaned = input.trim();
+  if (!cleaned) return '';
+
+  // If user pasted dashboard link like https://supabase.com/dashboard/project/abcdefgh...
+  const dashboardMatch = cleaned.match(/supabase\.com\/dashboard\/project\/([a-z0-9_-]+)/i);
+  if (dashboardMatch && dashboardMatch[1]) {
+    return `https://${dashboardMatch[1]}.supabase.co`;
+  }
+
+  // Remove trailing slashes and common path additions
+  cleaned = cleaned.replace(/\/rest\/v1\/?$/i, '');
+  cleaned = cleaned.replace(/\/+$/, '');
+
+  // Ensure https:// prefix if missing
+  if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+    cleaned = `https://${cleaned}`;
+  }
+
+  return cleaned;
+};
+
 export const saveCustomSupabaseConfig = (url: string, anonKey: string) => {
-  localStorage.setItem('supabase_custom_url', url.trim());
+  const sanitizedUrl = sanitizeSupabaseUrl(url);
+  localStorage.setItem('supabase_custom_url', sanitizedUrl);
   localStorage.setItem('supabase_custom_anon_key', anonKey.trim());
   // reset client cache
   cachedClient = null;
@@ -88,8 +111,18 @@ export const getSupabaseClient = (): SupabaseClient | null => {
 };
 
 export const testSupabaseConnection = async (url: string, key: string): Promise<{ success: boolean; message?: string }> => {
+  const sanitizedUrl = sanitizeSupabaseUrl(url);
+  const sanitizedKey = key.trim();
+
+  if (sanitizedUrl.includes('supabase.com/dashboard')) {
+    return {
+      success: false,
+      message: 'Geçersiz URL: Tarayıcının adres çubuğundaki yönetim linkini değil, Project Settings > Data API altındaki Project URL (https://xxxx.supabase.co) adresini girmelisiniz.',
+    };
+  }
+
   try {
-    const testClient = createClient(url.trim(), key.trim(), {
+    const testClient = createClient(sanitizedUrl, sanitizedKey, {
       auth: { persistSession: false },
     });
 
@@ -100,6 +133,12 @@ export const testSupabaseConnection = async (url: string, key: string): Promise<
         return {
           success: false,
           message: 'Supabase bağlandı ancak "team_project_state" tablosu bulunamadı. Lütfen SQL kodunu Supabase panelinde çalıştırın.',
+        };
+      }
+      if (error.message.includes('Invalid path specified in request URL')) {
+        return {
+          success: false,
+          message: 'Geçersiz URL formatı: Lütfen Supabase Project Settings > Data API sekmesindeki Project URL (https://xxxx.supabase.co) değerini kopyaladığınızdan emin olun.',
         };
       }
       return {
