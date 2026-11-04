@@ -14,6 +14,7 @@ import { PitchStudioSection } from './components/PitchStudioSection';
 import { ChecklistSection } from './components/ChecklistSection';
 import { GuideSection } from './components/GuideSection';
 import { ReportExportSection } from './components/ReportExportSection';
+import { AuthGate } from './components/AuthGate';
 
 import './App.css';
 
@@ -78,80 +79,86 @@ function App() {
   const checklistProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
-    <div className="clean-app">
-      <Navbar 
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        criticalCollisionsCount={criticalCollisionsCount}
-        checklistProgress={checklistProgress}
-      />
-
-      <main className="clean-main">
-        {activeTab === 'radar' && (
-          <RadarSection 
-            competitors={competitors}
-            setCompetitors={setCompetitors}
-            targetDate={targetDate}
-            setTargetDate={setTargetDate}
-            myGameTitle={myGameTitle}
-            setMyGameTitle={setMyGameTitle}
-          />
-        )}
-
-        {activeTab === 'social' && (
-          <SocialMediaSection 
-            myGameTitle={myGameTitle}
-          />
-        )}
-
-        {activeTab === 'marketing' && (
-          <MarketingSection channels={marketingChannels} />
-        )}
-
-        {activeTab === 'pitch' && (
-          <PitchStudioSection 
-            templates={pitchTemplates} 
-            myGameTitle={myGameTitle}
-          />
-        )}
-
-        {activeTab === 'checklist' && (
-          <ChecklistSection 
-            checklist={checklist}
-            setChecklist={setChecklist}
-          />
-        )}
-
-        {activeTab === 'guide' && (
-          <GuideSection 
-            festivals={steamFestivals}
-            targetDate={targetDate}
-          />
-        )}
-
-        {activeTab === 'report' && (
-          <ReportExportSection 
-            myGameTitle={myGameTitle}
-            setMyGameTitle={setMyGameTitle}
-            targetDate={targetDate}
-            setTargetDate={setTargetDate}
-            competitors={competitors}
-            setCompetitors={setCompetitors}
-            checklist={checklist}
-            setChecklist={setChecklist}
+    <AuthGate>
+      {({ onLogout, openChangePassword }) => (
+        <div className="clean-app">
+          <Navbar 
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
             criticalCollisionsCount={criticalCollisionsCount}
             checklistProgress={checklistProgress}
+            onLogout={onLogout}
+            openChangePassword={openChangePassword}
           />
-        )}
-      </main>
 
-      <footer className="clean-footer">
-        <div className="footer-inner">
-          <span>GameLaunch Radar — Steam Co-Op & Friendslop Marketing</span>
-          <span className="footer-mute">Yerel ve Çevrim Dışı Öncelikli</span>
+          <main className="clean-main">
+            {activeTab === 'radar' && (
+              <RadarSection 
+                competitors={competitors}
+                setCompetitors={setCompetitors}
+                targetDate={targetDate}
+                setTargetDate={setTargetDate}
+                myGameTitle={myGameTitle}
+                setMyGameTitle={setMyGameTitle}
+              />
+            )}
+
+            {activeTab === 'social' && (
+              <SocialMediaSection 
+                myGameTitle={myGameTitle}
+              />
+            )}
+
+            {activeTab === 'marketing' && (
+              <MarketingSection channels={marketingChannels} />
+            )}
+
+            {activeTab === 'pitch' && (
+              <PitchStudioSection 
+                templates={pitchTemplates} 
+                myGameTitle={myGameTitle}
+              />
+            )}
+
+            {activeTab === 'checklist' && (
+              <ChecklistSection 
+                checklist={checklist}
+                setChecklist={setChecklist}
+              />
+            )}
+
+            {activeTab === 'guide' && (
+              <GuideSection 
+                festivals={steamFestivals}
+                targetDate={targetDate}
+              />
+            )}
+
+            {activeTab === 'report' && (
+              <ReportExportSection 
+                myGameTitle={myGameTitle}
+                setMyGameTitle={setMyGameTitle}
+                targetDate={targetDate}
+                setTargetDate={setTargetDate}
+                competitors={competitors}
+                setCompetitors={setCompetitors}
+                checklist={checklist}
+                setChecklist={setChecklist}
+                criticalCollisionsCount={criticalCollisionsCount}
+                checklistProgress={checklistProgress}
+              />
+            )}
+          </main>
+
+          <footer className="clean-footer">
+            <div className="footer-inner">
+              <span>GameLaunch Radar — Steam Co-Op & Friendslop Marketing</span>
+              <span className="footer-mute">Yerel ve Çevrim Dışı Öncelikli</span>
+            </div>
+          </footer>
         </div>
-      </footer>
-    </div>
+      )}
+    </AuthGate>
   );
 }
 

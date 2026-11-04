@@ -40,6 +40,11 @@
    - **Markdown (.md):** Obsidian, Notion ve GitHub için tek tıkla indirilebilir master lansman kiti.
    - **JSON Yedekleme:** Yerel tarayıcı verilerini dışa aktarma ve başka cihaza geri yükleme.
 
+8. **🔒 Ekip & Geliştirici Giriş Kapısı (`AuthGate`):**
+   - Sitenin kamuya açık URL'inde yabancıların veya rakiplerin stratejilerinizi görmesini engelleyen şifreli giriş ekranı.
+   - Varsayılan şifre: `friendslop` (Navbar üzerinden dilediğiniz zaman değiştirilebilir).
+   - "Beni Hatırla" ve tek tıkla oturum kapatma (Logout).
+
 ---
 
 ## 🚀 Kurulum ve Çalıştırma

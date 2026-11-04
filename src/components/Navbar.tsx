@@ -7,7 +7,9 @@ import {
   BookOpen, 
   AlertCircle,
   Smartphone,
-  FileDown
+  FileDown,
+  KeyRound,
+  LogOut
 } from 'lucide-react';
 
 export type ActiveTab = 'radar' | 'social' | 'marketing' | 'pitch' | 'checklist' | 'guide' | 'report';
@@ -17,6 +19,8 @@ interface NavbarProps {
   setActiveTab: (tab: ActiveTab) => void;
   criticalCollisionsCount: number;
   checklistProgress: number;
+  onLogout?: () => void;
+  openChangePassword?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -24,6 +28,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   criticalCollisionsCount,
   checklistProgress,
+  onLogout,
+  openChangePassword,
 }) => {
   return (
     <header className="clean-navbar">
@@ -103,6 +109,31 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Rapor & Dışa Aktar</span>
           </button>
         </nav>
+
+        {/* Auth / Account Actions */}
+        <div className="navbar-auth-actions">
+          {openChangePassword && (
+            <button 
+              className="navbar-icon-btn" 
+              onClick={openChangePassword}
+              title="Ekip Şifresini Değiştir"
+            >
+              <KeyRound size={14} />
+              <span className="btn-hide-mobile">Şifre Değiştir</span>
+            </button>
+          )}
+
+          {onLogout && (
+            <button 
+              className="navbar-icon-btn logout" 
+              onClick={onLogout}
+              title="Oturumu Kapat"
+            >
+              <LogOut size={14} />
+              <span className="btn-hide-mobile">Çıkış</span>
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );

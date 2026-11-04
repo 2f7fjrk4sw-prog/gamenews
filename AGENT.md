@@ -30,7 +30,8 @@
 oyun-haberleri/
 ├── src/
 │   ├── components/
-│   │   ├── Navbar.tsx             # Temiz üst menü ve 7 ana sekme (Radar, Social, Channels, Pitch, Checklist, Guide, Report)
+│   │   ├── AuthGate.tsx           # Şifreli ekip giriş ekranı, oturum yönetimi ve şifre değiştirme
+│   │   ├── Navbar.tsx             # Temiz üst menü, sekmeler, şifre değiştirme ve çıkış butonları
 │   │   ├── RadarSection.tsx       # Sade rakip radarı, çakışma uyarısı, hızlı filtreler, yeni rakip ekleme
 │   │   ├── SocialMediaSection.tsx # TikTok & Instagram duyuru, kanca (hook), senaryo ve açıklama stüdyosu
 │   │   ├── MarketingSection.tsx   # Platform bazlı sade pazarlama kartları (Reddit, Discord, vb.)
