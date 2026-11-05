@@ -9,11 +9,21 @@ export interface SupabaseConfig {
 }
 
 // Built-in default project credentials (can be pre-populated for permanent 24/7 cloud sync)
-export const DEFAULT_SUPABASE_URL: string = '';
-export const DEFAULT_SUPABASE_ANON_KEY: string = '';
+export const DEFAULT_SUPABASE_URL: string = 'https://hvnycpduhlbodjyewjve.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY: string = 'sb_publishable_JeSR2HP59ZLzExbC2-UVJA_CSeIpTU8';
 
 export const getSupabaseConfig = (): SupabaseConfig => {
-  // 1. Vite replaces static `import.meta.env.VITE_*` variables during production build
+  // 1. Built-in default project credentials (Permanent 24/7 cloud sync for all devices)
+  if (DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY && DEFAULT_SUPABASE_URL.startsWith('http')) {
+    return {
+      url: DEFAULT_SUPABASE_URL,
+      anonKey: DEFAULT_SUPABASE_ANON_KEY,
+      isConfigured: true,
+      source: 'default',
+    };
+  }
+
+  // 2. Vite replaces static `import.meta.env.VITE_*` variables during production build
   const envUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || '';
   const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() || '';
 
@@ -26,7 +36,7 @@ export const getSupabaseConfig = (): SupabaseConfig => {
     };
   }
 
-  // 2. Custom URL saved via in-app CloudSyncModal
+  // 3. Custom URL saved via in-app CloudSyncModal
   const customUrl = (localStorage.getItem('supabase_custom_url') || '').trim();
   const customKey = (localStorage.getItem('supabase_custom_anon_key') || '').trim();
 
@@ -36,16 +46,6 @@ export const getSupabaseConfig = (): SupabaseConfig => {
       anonKey: customKey,
       isConfigured: true,
       source: 'custom',
-    };
-  }
-
-  // 3. Default fallback credentials if set in code
-  if (DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY && DEFAULT_SUPABASE_URL.startsWith('http')) {
-    return {
-      url: DEFAULT_SUPABASE_URL,
-      anonKey: DEFAULT_SUPABASE_ANON_KEY,
-      isConfigured: true,
-      source: 'default',
     };
   }
 
