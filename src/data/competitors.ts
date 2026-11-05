@@ -12,7 +12,7 @@ export const initialCompetitors: CompetitorGame[] = [
     description: 'Yeraltı nükleer tesislerinde hurda toplarken canavarların sizi sesinizden avladığı 4 kişilik kaotik co-op.',
     keyMechanics: ['Ses Duyarlı Yapay Zeka', 'Ağır Eşya Taşıma', 'Telsiz Mesafesi', 'Komik Ragdoll'],
     pricingEstimate: '$9.99',
-    steamUrl: 'https://store.steampowered.com',
+    steamUrl: 'https://store.steampowered.com/app/1966720/Lethal_Company/',
   },
   {
     id: 'comp-1',
@@ -25,7 +25,7 @@ export const initialCompetitors: CompetitorGame[] = [
     description: 'Terk edilmiş denizaltı laboratuvarlarında arkadaşlarınızla delil temizlediğiniz kaotik co-op korku oyunu.',
     keyMechanics: ['Yakınlık Sesi (Proximity Chat)', 'Denizaltı Oksijen Yönetimi', 'Komik Ragdoll Ölümleri'],
     pricingEstimate: '$6.99',
-    steamUrl: 'https://store.steampowered.com',
+    steamUrl: 'https://store.steampowered.com/app/2963840/Murky_Divers/',
   },
   {
     id: 'comp-3',
@@ -38,7 +38,7 @@ export const initialCompetitors: CompetitorGame[] = [
     description: 'Gece orman gözetleme kulesinde telsizle ve fenerle canavarlardan kaçılan Lethal Company tarzı görev oyunu.',
     keyMechanics: ['Telsiz Cızırtısı & Sinyal', 'Canavar Yapay Zekası', 'Eşya Taşıma Kotası'],
     pricingEstimate: '$9.99',
-    steamUrl: 'https://store.steampowered.com',
+    steamUrl: 'https://store.steampowered.com/app/2881650/Content_Warning/',
   },
   {
     id: 'comp-2',
@@ -51,7 +51,7 @@ export const initialCompetitors: CompetitorGame[] = [
     description: 'Fizik tabanlı sakar soyguncuların bankaları birbirine kattığı 4 kişilik co-op komedi oyunu.',
     keyMechanics: ['Fizik Tabanlı Hareket', 'Sabotaj Mekanikleri', 'Bölünmüş Ekran & Online'],
     pricingEstimate: '$7.99',
-    steamUrl: 'https://store.steampowered.com',
+    steamUrl: 'https://store.steampowered.com/search/?term=Heist+co-op',
   },
   {
     id: 'comp-5',
@@ -64,7 +64,7 @@ export const initialCompetitors: CompetitorGame[] = [
     description: 'Birbirine elastik iple bağlı 4 palyaçonun sirkin tepesinden kaçmaya çalıştığı tırmanış oyunu.',
     keyMechanics: ['Birlikte İple Bağlı Olma', 'Öfke Tetikleyici Fizik', 'Yüksekten Düşme Kaosu'],
     pricingEstimate: '$5.99',
-    steamUrl: 'https://store.steampowered.com',
+    steamUrl: 'https://store.steampowered.com/app/2567870/Chained_Together/',
   },
   {
     id: 'comp-4',
@@ -77,7 +77,7 @@ export const initialCompetitors: CompetitorGame[] = [
     description: 'Aranızdaki bir casusun gizlice kapıları kilitlediği eğlenceli kaçış partisi oyunu.',
     keyMechanics: ['Sosyal Çıkarım (Impostor)', 'Mini Bulmacalar', 'Komik İfadeler'],
     pricingEstimate: '$4.99',
-    steamUrl: 'https://store.steampowered.com',
+    steamUrl: 'https://store.steampowered.com/app/945360/Among_Us/',
   },
   {
     id: 'comp-6',
@@ -90,6 +90,6 @@ export const initialCompetitors: CompetitorGame[] = [
     description: 'Kar fırtınasında buz kazmalarıyla tepeye tırmanırken birbirini aşağı çeken dağcı arkadaşların komedisi.',
     keyMechanics: ['Fiziksel Halat Tutuşu', 'Dondurucu Soğuk Sayacı', 'Yankılanan Sesler'],
     pricingEstimate: '$7.99',
-    steamUrl: 'https://store.steampowered.com',
+    steamUrl: 'https://store.steampowered.com/search/?term=Peak+Pals',
   },
 ];

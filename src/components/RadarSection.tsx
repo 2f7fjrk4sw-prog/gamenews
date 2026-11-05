@@ -20,6 +20,20 @@ interface RadarSectionProps {
   setMyGameTitle: (title: string) => void;
 }
 
+const getSteamLink = (comp: CompetitorGame): string => {
+  const url = (comp.steamUrl || '').trim();
+  if (
+    !url ||
+    url === 'https://store.steampowered.com' ||
+    url === 'https://store.steampowered.com/' ||
+    url === 'http://store.steampowered.com' ||
+    url === 'http://store.steampowered.com/'
+  ) {
+    return `https://store.steampowered.com/search/?term=${encodeURIComponent(comp.title)}`;
+  }
+  return url;
+};
+
 export const RadarSection: React.FC<RadarSectionProps> = ({
   competitors,
   setCompetitors,
@@ -48,6 +62,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
   const [newWishlist, setNewWishlist] = useState<WishlistTier>('Moderate (10k-50k)');
   const [newTags, setNewTags] = useState('Online Co-Op, Friendslop');
   const [newDesc, setNewDesc] = useState('');
+  const [newSteamUrl, setNewSteamUrl] = useState('');
 
   // Calculate day difference and collision risk
   const getCollision = (compDateStr: string, tier: WishlistTier) => {
@@ -75,6 +90,8 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
     e.preventDefault();
     if (!newTitle.trim()) return;
 
+    const finalSteamUrl = newSteamUrl.trim() || `https://store.steampowered.com/search/?term=${encodeURIComponent(newTitle.trim())}`;
+
     const newGame: CompetitorGame = {
       id: `custom-${Date.now()}`,
       title: newTitle.trim(),
@@ -85,7 +102,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
       genreTags: newTags.split(',').map(t => t.trim()).filter(Boolean),
       keyMechanics: ['Yakınlık Sesi', 'Kaotik Co-Op'],
       description: newDesc.trim() || 'Steam de listelenen rakip oyun.',
-      steamUrl: 'https://store.steampowered.com',
+      steamUrl: finalSteamUrl,
     };
 
     const updated = [newGame, ...competitors];
@@ -95,6 +112,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
     setNewTitle('');
     setNewDev('');
     setNewDesc('');
+    setNewSteamUrl('');
     setShowAddModal(false);
   };
 
@@ -265,7 +283,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                     </button>
                   )}
                   <a 
-                    href={comp.steamUrl || `https://store.steampowered.com/search/?term=${encodeURIComponent(comp.title)}`}
+                    href={getSteamLink(comp)}
                     target="_blank" 
                     rel="noreferrer"
                     className="clean-link-btn"
@@ -350,6 +368,19 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                   onChange={(e) => setNewTags(e.target.value)}
                   placeholder="Online Co-Op, Proximity Voice"
                 />
+              </div>
+
+              <div className="input-group">
+                <label>Steam Mağaza Linki (İsteğe Bağlı)</label>
+                <input 
+                  type="url" 
+                  value={newSteamUrl}
+                  onChange={(e) => setNewSteamUrl(e.target.value)}
+                  placeholder="https://store.steampowered.com/app/..."
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                  Boş bırakırsanız otomatik olarak oyunun adıyla Steam mağaza aramasına yönlendirir.
+                </span>
               </div>
 
               <div className="input-group">
