@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import type { CompetitorGame, ChecklistItem, TeamMember } from './types';
+import type { CompetitorGame, ChecklistItem, TeamMember, TeamUser } from './types';
 import { initialCompetitors } from './data/competitors';
 import { initialChecklist } from './data/launchChecklist';
 import { initialTeamMembers } from './data/teamMembers';
 import { marketingChannels } from './data/marketingChannels';
 import { pitchTemplates } from './data/pitchTemplates';
 import { steamFestivals } from './data/steamFestivals';
+import { fetchCloudUsers, saveUserToCloud } from './lib/supabase';
 
 import { Navbar, type ActiveTab } from './components/Navbar';
 import { RadarSection } from './components/RadarSection';
@@ -88,7 +89,36 @@ function App() {
     return localStorage.getItem('current_team_member_id') || 'member-lead';
   });
 
+  // Registered Users (synchronized across all devices via cloud)
+  const [registeredUsers, setRegisteredUsers] = useState<TeamUser[]>(() => {
+    try {
+      const saved = localStorage.getItem('game_registered_users');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Current Logged-in User Session (saved in localStorage / sessionStorage)
+  const [currentUser, setCurrentUser] = useState<TeamUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('radar_active_user') || sessionStorage.getItem('radar_active_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
+  // Fetch registered users from cloud on mount
+  useEffect(() => {
+    fetchCloudUsers().then((cloudUsers) => {
+      if (cloudUsers && cloudUsers.length > 0) {
+        setRegisteredUsers(cloudUsers);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('user_game_target_date', targetDate);
@@ -102,7 +132,57 @@ function App() {
     localStorage.setItem('game_team_members', JSON.stringify(teamMembers));
   }, [teamMembers]);
 
-  const currentMember = teamMembers.find((m) => m.id === currentMemberId) || teamMembers[0];
+  // Handle new user registration
+  const handleRegisterUser = async (newUser: TeamUser): Promise<boolean> => {
+    setRegisteredUsers((prev) => {
+      const filtered = prev.filter((u) => u.username.toLowerCase() !== newUser.username.toLowerCase());
+      const next = [...filtered, newUser];
+      localStorage.setItem('game_registered_users', JSON.stringify(next));
+      return next;
+    });
+
+    // Auto-add newly registered user to Team Members if not already present
+    setTeamMembers((prev) => {
+      if (prev.some((m) => m.id === newUser.id)) return prev;
+      const next: TeamMember[] = [
+        ...prev,
+        {
+          id: newUser.id,
+          name: newUser.name,
+          role: newUser.role,
+          avatarColor: newUser.avatarColor,
+          joinedAt: newUser.createdAt,
+        },
+      ];
+      localStorage.setItem('game_team_members', JSON.stringify(next));
+      return next;
+    });
+
+    await saveUserToCloud(newUser);
+    return true;
+  };
+
+  // Handle user details / password update
+  const handleUpdateUser = async (updatedUser: TeamUser): Promise<boolean> => {
+    setRegisteredUsers((prev) => {
+      const next = prev.map((u) => (u.id === updatedUser.id ? updatedUser : u));
+      localStorage.setItem('game_registered_users', JSON.stringify(next));
+      return next;
+    });
+    setCurrentUser(updatedUser);
+    localStorage.setItem('radar_active_user', JSON.stringify(updatedUser));
+    await saveUserToCloud(updatedUser);
+    return true;
+  };
+
+  // Active member profile: If logged in with an account, use that account identity
+  const currentMember: TeamMember = currentUser ? {
+    id: currentUser.id,
+    name: currentUser.name,
+    role: currentUser.role,
+    avatarColor: currentUser.avatarColor,
+    joinedAt: currentUser.createdAt,
+  } : (teamMembers.find((m) => m.id === currentMemberId) || teamMembers[0]);
 
   // Real-time Cloud Synchronization (Supabase)
   const {
@@ -125,6 +205,8 @@ function App() {
     teamMembers,
     setTeamMembers,
     currentMember,
+    registeredUsers,
+    setRegisteredUsers,
   });
 
   // Compute collision risk count
@@ -142,7 +224,13 @@ function App() {
   const checklistProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
-    <AuthGate>
+    <AuthGate
+      registeredUsers={registeredUsers}
+      onRegisterUser={handleRegisterUser}
+      onUpdateUser={handleUpdateUser}
+      currentUser={currentUser}
+      setCurrentUser={setCurrentUser}
+    >
       {({ onLogout, openChangePassword }) => (
         <div className="clean-app">
           <Navbar 
@@ -153,7 +241,7 @@ function App() {
             syncStatus={syncStatus}
             openCloudModal={() => setIsCloudModalOpen(true)}
             teamMembers={teamMembers}
-            currentMemberId={currentMemberId}
+            currentMemberId={currentUser ? currentUser.id : currentMemberId}
             onlineUsers={onlineUsers}
             openTeamModal={() => setIsTeamModalOpen(true)}
             onLogout={onLogout}
@@ -244,7 +332,7 @@ function App() {
             onClose={() => setIsTeamModalOpen(false)}
             teamMembers={teamMembers}
             setTeamMembers={setTeamMembers}
-            currentMemberId={currentMemberId}
+            currentMemberId={currentUser ? currentUser.id : currentMemberId}
             setCurrentMemberId={setCurrentMemberId}
             onlineUsers={onlineUsers}
           />

@@ -78,6 +78,17 @@ export interface TeamMember {
   joinedAt: string;
 }
 
+export interface TeamUser {
+  id: string;
+  username: string;
+  password: string;
+  name: string;
+  role: string;
+  avatarColor: string;
+  createdAt: string;
+  lastLoginAt: string;
+}
+
 export interface OnlineUserPresence {
   sessionId: string;
   id: string;
@@ -93,5 +104,6 @@ export interface SyncedProjectState {
   competitors: CompetitorGame[];
   checklist: ChecklistItem[];
   teamMembers?: TeamMember[];
+  registeredUsers?: TeamUser[];
   updatedAt: string;
 }

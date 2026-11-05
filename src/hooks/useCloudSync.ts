@@ -5,6 +5,7 @@ import type {
   CloudSyncStatus, 
   SyncedProjectState, 
   TeamMember,
+  TeamUser,
   OnlineUserPresence 
 } from '../types';
 import { getSupabaseClient, getSupabaseConfig } from '../lib/supabase';
@@ -21,6 +22,8 @@ interface UseCloudSyncProps {
   teamMembers?: TeamMember[];
   setTeamMembers?: React.Dispatch<React.SetStateAction<TeamMember[]>>;
   currentMember?: TeamMember;
+  registeredUsers?: TeamUser[];
+  setRegisteredUsers?: React.Dispatch<React.SetStateAction<TeamUser[]>>;
 }
 
 export const useCloudSync = ({
@@ -35,6 +38,8 @@ export const useCloudSync = ({
   teamMembers,
   setTeamMembers,
   currentMember,
+  registeredUsers,
+  setRegisteredUsers,
 }: UseCloudSyncProps) => {
   const config = getSupabaseConfig();
   const [isPaused, setIsPaused] = useState<boolean>(() => {
@@ -77,6 +82,7 @@ export const useCloudSync = ({
     competitors,
     checklist,
     teamMembers,
+    registeredUsers,
   });
 
   const lastLocalEditRef = useRef<number>(0);
@@ -92,11 +98,12 @@ export const useCloudSync = ({
       competitors,
       checklist,
       teamMembers,
+      registeredUsers,
     };
     if (!isApplyingRemoteRef.current) {
       lastLocalEditRef.current = Date.now();
     }
-  }, [myGameTitle, targetDate, competitors, checklist, teamMembers]);
+  }, [myGameTitle, targetDate, competitors, checklist, teamMembers, registeredUsers]);
 
   // Pull latest snapshot from database
   const pullFromCloud = useCallback(async () => {
@@ -167,6 +174,14 @@ export const useCloudSync = ({
           setTeamMembers(stateObj.teamMembers);
           localStorage.setItem('game_team_members', JSON.stringify(stateObj.teamMembers));
         }
+        if (Array.isArray(stateObj.registeredUsers) && setRegisteredUsers) {
+          setRegisteredUsers(stateObj.registeredUsers);
+          localStorage.setItem('game_registered_users', JSON.stringify(stateObj.registeredUsers));
+        }
+        if (Array.isArray(stateObj.registeredUsers) && setRegisteredUsers) {
+          setRegisteredUsers(stateObj.registeredUsers);
+          localStorage.setItem('game_registered_users', JSON.stringify(stateObj.registeredUsers));
+        }
 
         const now = new Date().toLocaleTimeString('tr-TR');
         setLastSyncedAt(now);
@@ -198,7 +213,7 @@ export const useCloudSync = ({
       setSyncStatus('error');
       setErrorMessage((err as Error).message);
     }
-  }, [isPaused, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers]);
+  }, [isPaused, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers, setRegisteredUsers]);
 
   // Real-time WebSocket Channel: Instant Broadcast (<50ms) + Presence Tracking + Postgres Backup
   useEffect(() => {
@@ -263,6 +278,10 @@ export const useCloudSync = ({
       if (Array.isArray(remoteState.teamMembers) && setTeamMembers) {
         setTeamMembers(remoteState.teamMembers);
         localStorage.setItem('game_team_members', JSON.stringify(remoteState.teamMembers));
+      }
+      if (Array.isArray(remoteState.registeredUsers) && setRegisteredUsers) {
+        setRegisteredUsers(remoteState.registeredUsers);
+        localStorage.setItem('game_registered_users', JSON.stringify(remoteState.registeredUsers));
       }
 
       const now = new Date().toLocaleTimeString('tr-TR');
@@ -386,6 +405,10 @@ export const useCloudSync = ({
           setTeamMembers(stateObj.teamMembers);
           localStorage.setItem('game_team_members', JSON.stringify(stateObj.teamMembers));
         }
+        if (Array.isArray(stateObj.registeredUsers) && setRegisteredUsers) {
+          setRegisteredUsers(stateObj.registeredUsers);
+          localStorage.setItem('game_registered_users', JSON.stringify(stateObj.registeredUsers));
+        }
 
         const now = new Date().toLocaleTimeString('tr-TR');
         setLastSyncedAt(now);
@@ -429,7 +452,7 @@ export const useCloudSync = ({
       channel.unsubscribe();
       channelRef.current = null;
     };
-  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers, clientSessionId]);
+  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers, setRegisteredUsers, clientSessionId]);
 
   // Update presence tracking if current member profile changes without recreating channel
   useEffect(() => {
@@ -501,7 +524,7 @@ export const useCloudSync = ({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [myGameTitle, targetDate, competitors, checklist, teamMembers, isCloudEnabled]);
+  }, [myGameTitle, targetDate, competitors, checklist, teamMembers, registeredUsers, isCloudEnabled]);
 
   const togglePauseSync = useCallback(() => {
     const nextPaused = !isPaused;

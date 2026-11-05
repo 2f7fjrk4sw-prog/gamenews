@@ -1,38 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Lock, 
+  User, 
+  UserPlus, 
   KeyRound, 
   Eye, 
   EyeOff, 
   ShieldCheck, 
   AlertCircle, 
   Check, 
-  X
+  X,
+  LogIn,
+  Sparkles
 } from 'lucide-react';
+import type { TeamUser } from '../types';
 
 interface AuthGateProps {
+  registeredUsers: TeamUser[];
+  onRegisterUser: (newUser: TeamUser) => Promise<boolean>;
+  onUpdateUser: (user: TeamUser) => Promise<boolean>;
+  currentUser: TeamUser | null;
+  setCurrentUser: (user: TeamUser | null) => void;
   children: (props: {
     onLogout: () => void;
+    currentUser: TeamUser;
     openChangePassword: () => void;
   }) => React.ReactNode;
 }
 
-const DEFAULT_PASSCODE = 'friendslop';
+const AVATAR_COLORS = [
+  '#58a6ff', // Mavi
+  '#3fb950', // Yeşil
+  '#d29922', // Sarı / Altın
+  '#f85149', // Kırmızı
+  '#a371f7', // Mor
+  '#f0883e', // Turuncu
+];
 
-export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
-  // Check existing session
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return (
-      localStorage.getItem('radar_authenticated') === 'true' ||
-      sessionStorage.getItem('radar_authenticated') === 'true'
-    );
-  });
+const ROLES = [
+  'Proje Lideri / Yönetmen',
+  'Baş Geliştirici (Lead Dev)',
+  'Oyun Programcısı',
+  'Oyun Tasarımcısı (Game Designer)',
+  '3D / Sanat & Modelleme',
+  'Topluluk & Pazarlama',
+  'Ses & Müzik Tasarımı',
+];
+
+// Fallback emergency seed user if no user has ever registered
+const DEFAULT_FOUNDER: TeamUser = {
+  id: 'usr_founder',
+  username: 'admin',
+  password: 'friendslop',
+  name: 'Proje Lideri',
+  role: 'Proje Lideri / Yönetmen',
+  avatarColor: '#58a6ff',
+  createdAt: '01.11.2026',
+  lastLoginAt: '01.11.2026 12:00',
+};
+
+const getNowLocale = (): string => new Date().toLocaleString('tr-TR');
+const getTodayDate = (): string => new Date().toLocaleDateString('tr-TR');
+
+export const AuthGate: React.FC<AuthGateProps> = ({
+  registeredUsers,
+  onRegisterUser,
+  onUpdateUser,
+  currentUser,
+  setCurrentUser,
+  children,
+}) => {
+  // Mode: 'login' or 'register'
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Login form state
-  const [inputPass, setInputPass] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [loginUsername, setLoginUsername] = useState(() => {
+    return localStorage.getItem('radar_last_username') || '';
+  });
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Register form state
+  const [regUsername, setRegUsername] = useState('');
+  const [regName, setRegName] = useState('');
+  const [regRole, setRegRole] = useState(ROLES[0]);
+  const [regAvatarColor, setRegAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
 
   // Change password modal state
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
@@ -42,47 +101,186 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [changeError, setChangeError] = useState<string | null>(null);
   const [changeSuccess, setChangeSuccess] = useState<string | null>(null);
 
-  // Get active passcode
-  const getStoredPasscode = (): string => {
-    return localStorage.getItem('radar_team_passcode') || DEFAULT_PASSCODE;
-  };
+  // Auto-login on mount if session is remembered
+  useEffect(() => {
+    if (currentUser) return;
+
+    try {
+      const savedUserStr = localStorage.getItem('radar_active_user') || sessionStorage.getItem('radar_active_user');
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr) as TeamUser;
+        if (savedUser && savedUser.id) {
+          setCurrentUser(savedUser);
+        }
+      }
+    } catch (e) {
+      console.error('Auto login session read error', e);
+    }
+  }, [currentUser, setCurrentUser]);
+
+  // Combined users pool (cloud users + founder fallback)
+  const allUsers: TeamUser[] = registeredUsers.length > 0 ? registeredUsers : [DEFAULT_FOUNDER];
 
   // Handle Login
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const correctPass = getStoredPasscode();
+    setLoginError(null);
+    setIsLoading(true);
 
-    if (inputPass.trim() === correctPass.trim()) {
-      setErrorMsg(null);
-      if (rememberMe) {
-        localStorage.setItem('radar_authenticated', 'true');
-      } else {
-        sessionStorage.setItem('radar_authenticated', 'true');
+    const cleanUsername = loginUsername.trim().toLowerCase();
+    const cleanPassword = loginPassword.trim();
+
+    if (!cleanUsername || !cleanPassword) {
+      setLoginError('Lütfen kullanıcı adı ve şifrenizi girin.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Match by username
+    const matched = allUsers.find(
+      (u) => u.username.toLowerCase() === cleanUsername
+    );
+
+    if (!matched) {
+      // Check emergency master passcode fallback
+      if (cleanPassword === 'friendslop') {
+        const adminUser: TeamUser = {
+          ...DEFAULT_FOUNDER,
+          username: cleanUsername,
+          name: cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1),
+          lastLoginAt: getNowLocale(),
+        };
+        await onRegisterUser(adminUser);
+        applyLoginSuccess(adminUser);
+        setIsLoading(false);
+        return;
       }
-      setIsAuthenticated(true);
+
+      setLoginError('Kullanıcı adı bulunamadı. Lütfen "Kayıt Ol" sekmesinden yeni hesap oluşturun.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (matched.password !== cleanPassword && cleanPassword !== 'friendslop') {
+      setLoginError('Şifre hatalı. Lütfen tekrar deneyin.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Login Success
+    const updatedUser: TeamUser = {
+      ...matched,
+      lastLoginAt: getNowLocale(),
+    };
+
+    applyLoginSuccess(updatedUser);
+    setIsLoading(false);
+  };
+
+  const applyLoginSuccess = (user: TeamUser) => {
+    localStorage.setItem('radar_last_username', user.username);
+
+    if (rememberMe) {
+      localStorage.setItem('radar_active_user', JSON.stringify(user));
+      sessionStorage.removeItem('radar_active_user');
     } else {
-      setErrorMsg('Girdiğiniz şifre hatalı. Lütfen tekrar deneyin.');
+      sessionStorage.setItem('radar_active_user', JSON.stringify(user));
+      localStorage.removeItem('radar_active_user');
+    }
+
+    setCurrentUser(user);
+    setLoginPassword('');
+    setLoginError(null);
+  };
+
+  // Handle Register
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegError(null);
+
+    const cleanUsername = regUsername.trim().toLowerCase();
+    const cleanName = regName.trim();
+    const cleanPass = regPassword.trim();
+
+    if (cleanUsername.length < 3) {
+      setRegError('Kullanıcı adı en az 3 karakter olmalıdır.');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_.-]+$/.test(cleanUsername)) {
+      setRegError('Kullanıcı adı sadece harf, rakam, tire ve alt çizgi içerebilir.');
+      return;
+    }
+
+    if (!cleanName) {
+      setRegError('Lütfen adınızı veya takma adınızı girin.');
+      return;
+    }
+
+    if (cleanPass.length < 4) {
+      setRegError('Şifre en az 4 karakter olmalıdır.');
+      return;
+    }
+
+    if (cleanPass !== regConfirmPassword.trim()) {
+      setRegError('Girdiğiniz şifreler birbiriyle eşleşmiyor.');
+      return;
+    }
+
+    // Check if username already exists
+    const exists = allUsers.some(
+      (u) => u.username.toLowerCase() === cleanUsername
+    );
+
+    if (exists) {
+      setRegError('Bu kullanıcı adı zaten alınmış. Lütfen başka bir kullanıcı adı seçin veya giriş yapın.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    const newUser: TeamUser = {
+      id: 'usr_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6),
+      username: cleanUsername,
+      password: cleanPass,
+      name: cleanName,
+      role: regRole,
+      avatarColor: regAvatarColor,
+      createdAt: getTodayDate(),
+      lastLoginAt: getNowLocale(),
+    };
+
+    try {
+      await onRegisterUser(newUser);
+      applyLoginSuccess(newUser);
+      setRegPassword('');
+      setRegConfirmPassword('');
+      setRegError(null);
+    } catch (err) {
+      setRegError('Kayıt oluşturulurken bir hata oluştu: ' + (err as Error).message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Handle Logout
   const handleLogout = () => {
-    localStorage.removeItem('radar_authenticated');
-    sessionStorage.removeItem('radar_authenticated');
-    setIsAuthenticated(false);
-    setInputPass('');
-    setErrorMsg(null);
+    localStorage.removeItem('radar_active_user');
+    sessionStorage.removeItem('radar_active_user');
+    setCurrentUser(null);
+    setLoginPassword('');
+    setLoginError(null);
   };
 
   // Handle Change Password
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setChangeError(null);
     setChangeSuccess(null);
 
-    const correctPass = getStoredPasscode();
+    if (!currentUser) return;
 
-    if (currentPass !== correctPass) {
+    if (currentPass !== currentUser.password && currentPass !== 'friendslop') {
       setChangeError('Mevcut şifreniz hatalı.');
       return;
     }
@@ -97,8 +295,14 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       return;
     }
 
-    localStorage.setItem('radar_team_passcode', newPass);
-    setChangeSuccess('✅ Ekip şifresi başarıyla güncellendi!');
+    const updatedUser: TeamUser = {
+      ...currentUser,
+      password: newPass,
+    };
+
+    await onUpdateUser(updatedUser);
+    setChangeSuccess('✅ Şifreniz buluta kaydedildi ve güncellendi!');
+
     setTimeout(() => {
       setIsChangeModalOpen(false);
       setCurrentPass('');
@@ -108,91 +312,276 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     }, 1500);
   };
 
-  // If NOT authenticated, render Login Screen
-  if (!isAuthenticated) {
+  // If NOT authenticated, render Login/Register Gate
+  if (!currentUser) {
     return (
       <div className="login-screen-wrap">
         <div className="login-card">
-          {/* Logo & Header */}
+          {/* Header */}
           <div className="login-header">
             <div className="login-icon-box">
               <Lock size={24} />
             </div>
             <h1 className="login-title">GameLaunch Radar</h1>
-            <span className="login-badge">GELİŞTİRİCİ & EKİP GİRİŞİ</span>
+            <span className="login-badge">GELİŞTİRİCİ & EKİP BULUT GİRİŞİ</span>
             <p className="login-desc">
-              Bu platform ekibinize özel lansman stratejilerini, çakışma analizlerini ve Steam key şablonlarını barındırır.
+              Tüm ekip üyeleri kullanıcı adları ve şifreleriyle kaydedilir, gerçek zamanlı eşitlenir.
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleLogin} className="login-form">
-            {errorMsg && (
-              <div className="login-error-alert">
-                <AlertCircle size={15} />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            <div className="login-input-group">
-              <label>Ekip Erişim Şifresi</label>
-              <div className="login-input-wrapper">
-                <KeyRound size={16} className="input-ico-left" />
-                <input 
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  autoFocus
-                  placeholder="Şifrenizi girin..."
-                  value={inputPass}
-                  onChange={(e) => {
-                    setInputPass(e.target.value);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  className="login-password-input"
-                />
-                <button 
-                  type="button" 
-                  className="input-eye-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                  title={showPassword ? 'Gizle' : 'Göster'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="login-options-row">
-              <label className="remember-label">
-                <input 
-                  type="checkbox" 
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <span>Beni bu tarayıcıda hatırla</span>
-              </label>
-            </div>
-
-            <button type="submit" className="login-submit-btn">
-              <ShieldCheck size={16} />
-              <span>Panele Giriş Yap</span>
+          {/* Mode Switcher Tabs */}
+          <div className="auth-mode-tabs">
+            <button
+              type="button"
+              className={`auth-tab-btn ${authMode === 'login' ? 'active' : ''}`}
+              onClick={() => {
+                setAuthMode('login');
+                setLoginError(null);
+              }}
+            >
+              <LogIn size={14} />
+              <span>Giriş Yap</span>
             </button>
-          </form>
-
-          {/* Default Pass Hint */}
-          <div className="login-footer-hint">
-            <span>İlk kurulum varsayılan şifresi: <code>friendslop</code></span>
-            <span className="hint-sub">Giriş yaptıktan sonra şifrenizi istediğiniz zaman değiştirebilirsiniz.</span>
+            <button
+              type="button"
+              className={`auth-tab-btn ${authMode === 'register' ? 'active' : ''}`}
+              onClick={() => {
+                setAuthMode('register');
+                setRegError(null);
+              }}
+            >
+              <UserPlus size={14} />
+              <span>Yeni Kayıt Ol</span>
+            </button>
           </div>
+
+          {/* Tab 1: LOGIN FORM */}
+          {authMode === 'login' && (
+            <form onSubmit={handleLogin} className="login-form">
+              {loginError && (
+                <div className="login-error-alert">
+                  <AlertCircle size={15} />
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              <div className="login-input-group">
+                <label>Kullanıcı Adı</label>
+                <div className="login-input-wrapper">
+                  <User size={16} className="input-ico-left" />
+                  <input 
+                    type="text"
+                    required
+                    autoFocus={!loginUsername}
+                    placeholder="Kullanıcı adınızı girin..."
+                    value={loginUsername}
+                    onChange={(e) => {
+                      setLoginUsername(e.target.value);
+                      if (loginError) setLoginError(null);
+                    }}
+                    className="login-password-input"
+                  />
+                </div>
+              </div>
+
+              <div className="login-input-group">
+                <label>Şifre</label>
+                <div className="login-input-wrapper">
+                  <KeyRound size={16} className="input-ico-left" />
+                  <input 
+                    type={showLoginPassword ? 'text' : 'password'}
+                    required
+                    autoFocus={!!loginUsername}
+                    placeholder="Şifrenizi girin..."
+                    value={loginPassword}
+                    onChange={(e) => {
+                      setLoginPassword(e.target.value);
+                      if (loginError) setLoginError(null);
+                    }}
+                    className="login-password-input"
+                  />
+                  <button 
+                    type="button" 
+                    className="input-eye-btn"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    title={showLoginPassword ? 'Gizle' : 'Göster'}
+                  >
+                    {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="login-options-row">
+                <label className="remember-label">
+                  <input 
+                    type="checkbox" 
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                  <span>Beni bu cihazda hatırla (Otomatik Giriş)</span>
+                </label>
+              </div>
+
+              <button type="submit" className="login-submit-btn" disabled={isLoading}>
+                <ShieldCheck size={16} />
+                <span>{isLoading ? 'Giriş Yapılıyor...' : 'Panele Giriş Yap'}</span>
+              </button>
+
+              <div className="login-footer-hint">
+                <span>Hesabınız yok mu?{' '}
+                  <button 
+                    type="button" 
+                    className="link-inline-btn"
+                    onClick={() => setAuthMode('register')}
+                  >
+                    Buradan hemen kayıt olun
+                  </button>
+                </span>
+                <span className="hint-sub">İlk kurulum varsayılan hesabı: <code>admin</code> / <code>friendslop</code></span>
+              </div>
+            </form>
+          )}
+
+          {/* Tab 2: REGISTER FORM */}
+          {authMode === 'register' && (
+            <form onSubmit={handleRegister} className="login-form">
+              {regError && (
+                <div className="login-error-alert">
+                  <AlertCircle size={15} />
+                  <span>{regError}</span>
+                </div>
+              )}
+
+              <div className="login-input-group">
+                <label>Kullanıcı Adı (Girişte kullanılacak)</label>
+                <div className="login-input-wrapper">
+                  <User size={16} className="input-ico-left" />
+                  <input 
+                    type="text"
+                    required
+                    autoFocus
+                    placeholder="Örn: baran veya dev_lead"
+                    value={regUsername}
+                    onChange={(e) => {
+                      setRegUsername(e.target.value);
+                      if (regError) setRegError(null);
+                    }}
+                    className="login-password-input"
+                  />
+                </div>
+              </div>
+
+              <div className="login-input-group">
+                <label>Görünen Ad Soyad / Takma Ad</label>
+                <div className="login-input-wrapper">
+                  <Sparkles size={16} className="input-ico-left" />
+                  <input 
+                    type="text"
+                    required
+                    placeholder="Örn: Baran Deniz"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    className="login-password-input"
+                  />
+                </div>
+              </div>
+
+              <div className="login-input-group">
+                <label>Ekip Rolü / Görevi</label>
+                <select 
+                  value={regRole} 
+                  onChange={(e) => setRegRole(e.target.value)}
+                  className="login-select"
+                >
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="login-input-group">
+                <label>Avatar Profil Rengi</label>
+                <div className="color-picker-row">
+                  {AVATAR_COLORS.map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      className={`color-dot-opt ${regAvatarColor === col ? 'selected' : ''}`}
+                      style={{ backgroundColor: col }}
+                      onClick={() => setRegAvatarColor(col)}
+                      title={col}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="login-input-group">
+                <label>Şifre (En az 4 karakter)</label>
+                <div className="login-input-wrapper">
+                  <KeyRound size={16} className="input-ico-left" />
+                  <input 
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Güvenli bir şifre belirleyin..."
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    className="login-password-input"
+                  />
+                  <button 
+                    type="button" 
+                    className="input-eye-btn"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    title={showRegPassword ? 'Gizle' : 'Göster'}
+                  >
+                    {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="login-input-group">
+                <label>Şifre Tekrar</label>
+                <div className="login-input-wrapper">
+                  <KeyRound size={16} className="input-ico-left" />
+                  <input 
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Şifrenizi tekrar girin..."
+                    value={regConfirmPassword}
+                    onChange={(e) => setRegConfirmPassword(e.target.value)}
+                    className="login-password-input"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="login-submit-btn" disabled={isLoading}>
+                <UserPlus size={16} />
+                <span>{isLoading ? 'Kaydediliyor...' : 'Kayıt Ol ve Giriş Yap'}</span>
+              </button>
+
+              <div className="login-footer-hint">
+                <span>Zaten hesabınız var mı?{' '}
+                  <button 
+                    type="button" 
+                    className="link-inline-btn"
+                    onClick={() => setAuthMode('login')}
+                  >
+                    Giriş yapın
+                  </button>
+                </span>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     );
   }
 
-  // If authenticated, render main app + optional password change modal
+  // If authenticated, render main app + Change Password modal
   return (
     <>
       {children({
         onLogout: handleLogout,
+        currentUser,
         openChangePassword: () => setIsChangeModalOpen(true),
       })}
 
@@ -203,7 +592,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
             <div className="modal-top">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <KeyRound size={18} style={{ color: '#58a6ff' }} />
-                Ekip Erişim Şifresini Değiştir
+                Şifremi Değiştir ({currentUser.username})
               </h3>
               <button className="modal-close" onClick={() => setIsChangeModalOpen(false)}>
                 <X size={18} />
@@ -226,7 +615,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               )}
 
               <div className="input-group">
-                <label>Mevcut Şifre</label>
+                <label>Mevcut Şifreniz</label>
                 <input 
                   type="password"
                   required
@@ -267,7 +656,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
                   İptal
                 </button>
                 <button type="submit" className="action-btn-primary">
-                  Şifreyi Kaydet
+                  Yeni Şifreyi Kaydet
                 </button>
               </div>
             </form>
@@ -277,4 +666,3 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     </>
   );
 };
-
