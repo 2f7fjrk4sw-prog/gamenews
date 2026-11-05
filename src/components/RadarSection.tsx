@@ -15,7 +15,6 @@ import {
   Gamepad2,
   Sparkles,
   Radio,
-  TrendingUp,
   RefreshCw,
   Check,
   Zap,
@@ -84,7 +83,7 @@ const STEAM_KNOWN_GAMES: Record<string, string> = {
   'liars bar': 'https://store.steampowered.com/app/3097560/Liars_Bar/',
 };
 
-const getSteamLink = (comp: CompetitorGame): string => {
+const getSteamLink = (comp: CompetitorGame | MarketDiscoveryGame): string => {
   if (STEAM_KNOWN_GAMES[comp.id]) {
     return STEAM_KNOWN_GAMES[comp.id];
   }
@@ -132,7 +131,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
   myGameTitle,
   setMyGameTitle,
 }) => {
-  // Main view toggle: 'my-radar' (active tracked games) vs 'discovery' (Steam market intelligence)
+  // Main view toggle: 'my-radar' vs 'discovery'
   const [activeRadarTab, setActiveRadarTab] = useState<'my-radar' | 'discovery'>('my-radar');
 
   // Search & Filter for My Radar
@@ -180,9 +179,9 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
     const isMediumRisk = absDiff <= 14 && isHighTier;
 
     let timeText = '';
-    if (diffDays === 0) timeText = 'Aynı gün çıkıyor!';
-    else if (diffDays > 0) timeText = `${diffDays} gün sonra`;
-    else timeText = `${absDiff} gün önce`;
+    if (diffDays === 0) timeText = 'Aynı gün';
+    else if (diffDays > 0) timeText = `+${diffDays} gün`;
+    else timeText = `-${absDiff} gün`;
 
     return { diffDays, absDiff, isRisky, isMediumRisk, timeText };
   }, [targetDate]);
@@ -198,24 +197,20 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
   }, [competitors, todayStr]);
 
   // SMART LAUNCH WINDOW RECOMMENDER ALGORITHM
-  // Scans future calendar Fridays (standard Steam release days) and finds the calmest window with zero critical conflicts
   const optimalWindow = useMemo(() => {
     const baseDate = new Date(todayStr > targetDate ? todayStr : targetDate);
     let bestDate = '';
     let bestScore = -1;
     let calmReason = '';
 
-    // Combine active competitors and discovery games for a comprehensive market timeline
     const allKnownDates = [
       ...competitors.map(c => ({ date: c.releaseDate, tier: c.wishlistTier, title: c.title })),
       ...marketDiscoveryDatabase.map(m => ({ date: m.releaseDate, tier: m.wishlistTier, title: m.title })),
     ];
 
-    // Check 20 upcoming Fridays
     for (let i = 1; i <= 20; i++) {
       const candidate = new Date(baseDate);
       candidate.setDate(candidate.getDate() + (i * 7));
-      // Snap to Friday (day 5)
       const day = candidate.getDay();
       const diff = (5 - day + 7) % 7;
       candidate.setDate(candidate.getDate() + diff);
@@ -247,7 +242,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
       if (score > bestScore && minDistanceDays >= 10) {
         bestScore = score;
         bestDate = candStr;
-        calmReason = `En yakın büyük rakip (${closestGameTitle}) bu tarihten ${minDistanceDays} gün uzakta.`;
+        calmReason = `En yakın büyük rakip (${closestGameTitle}) ${minDistanceDays} gün uzakta.`;
       }
     }
 
@@ -363,7 +358,6 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
   // Filtered Discovery List
   const filteredDiscovery = useMemo(() => {
     return marketDiscoveryDatabase.filter(game => {
-      // Sadece çıkacak olan wishlist devleri filtresi
       if (discoveryCategory === 'upcoming') {
         if (game.releaseStatus !== 'upcoming') return false;
       } else if (discoveryCategory === 'friendslop') {
@@ -383,7 +377,6 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
         if (!isSoc) return false;
       }
 
-      // Text search
       if (discoverySearch.trim()) {
         const q = discoverySearch.toLowerCase();
         return (
@@ -466,261 +459,348 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
 
   return (
     <div className="tab-pane">
-      {/* 1. Game Config, Status & Smart Launch Window Banner */}
-      <div className="clean-config-card">
-        <div className="config-inputs-row">
-          <div className="clean-field">
-            <label><Gamepad2 size={14} /> Oyununuzun Adı</label>
+      {/* 1. PROFESSIONAL COMMAND BAR (STUDIO BAR) */}
+      <div className="studio-command-bar">
+        <div className="studio-bar-left">
+          <div className="studio-input-pill">
+            <Gamepad2 size={15} className="studio-ico" />
+            <span className="studio-label">Oyununuz:</span>
             <input 
               type="text"
               value={myGameTitle}
               onChange={(e) => setMyGameTitle(e.target.value)}
-              placeholder="Örn: RPS Shoot"
-              className="clean-input"
+              placeholder="RPS Shoot"
+              className="studio-bare-input"
             />
           </div>
 
-          <div className="clean-field">
-            <label><Calendar size={14} /> Hedef Çıkış Tarihiniz</label>
+          <div className="studio-input-pill">
+            <Calendar size={15} className="studio-ico" />
+            <span className="studio-label">Hedef Çıkış:</span>
             <input 
               type="date"
               value={targetDate}
               onChange={(e) => setTargetDate(e.target.value)}
-              className="clean-input"
+              className="studio-bare-input date-input"
             />
-            {targetDate && targetDate < todayStr && (
-              <span className="field-hint-warning">
-                <AlertTriangle size={12} /> Seçilen tarih geçmişte kalmış görünüyor
-              </span>
-            )}
           </div>
         </div>
 
-        {/* Status Message */}
-        <div className={`clean-status-box ${riskyGames.length > 0 ? 'status-danger' : 'status-success'}`}>
-          {riskyGames.length > 0 ? (
-            <>
-              <AlertTriangle size={18} className="status-ico danger" />
-              <div>
-                <strong>Dikkat: {riskyGames.length} Oyunla Çakışma Riski Var</strong>
-                <p>
-                  <strong>{riskyGames[0].title}</strong> hedeflediğiniz tarihe çok yakın ({riskyGames[0].releaseDate}). 
-                  Yayıncıların ilgisi ve Steam öne çıkanlar vitrininde bölünmemek için çıkışınızı kaydırmanız tavsiye edilir.
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <CheckCircle2 size={18} className="status-ico success" />
-              <div>
-                <strong>Güvenli Çıkış Penceresi</strong>
-                <p>Seçtiğiniz tarihe (<strong>{targetDate}</strong>) 7 gün mesafede yüksek istek listeli doğrudan bir rakip görünmüyor.</p>
-              </div>
-            </>
-          )}
-        </div>
+        <div className="studio-bar-right">
+          {/* Collision Risk Indicator */}
+          <div className={`studio-status-badge ${riskyGames.length > 0 ? 'badge-risk' : 'badge-safe'}`}>
+            {riskyGames.length > 0 ? (
+              <>
+                <AlertTriangle size={14} />
+                <span>{riskyGames.length} Çakışma Riski</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={14} />
+                <span>Güvenli Pencere</span>
+              </>
+            )}
+          </div>
 
-        {/* 🎯 SMART LAUNCH WINDOW RECOMMENDATION CARD */}
-        <div className="launch-window-card">
-          <div className="launch-window-header">
-            <div className="launch-window-title">
-              <Sparkles size={16} className="text-amber-400" />
-              <span>Algoritma Tavsiyesi: En Uygun Lansman Penceresi</span>
-              <span className="launch-window-score">%{optimalWindow.bestScore} Sakin</span>
-            </div>
+          {/* Recommender Action */}
+          <div className="studio-recommender-pill">
+            <Sparkles size={14} className="text-amber-400" />
+            <span className="recommender-text">
+              Tavsiye: <strong>{optimalWindow.bestDate}</strong> (%{optimalWindow.bestScore} Sakin)
+            </span>
             {targetDate !== optimalWindow.bestDate && (
               <button 
-                className="btn-apply-window"
+                className="btn-quick-apply"
                 onClick={() => setTargetDate(optimalWindow.bestDate)}
-                title="Hedef tarihi önerilen bu sakin pencereye güncelle"
+                title="Tavsiye edilen en sakin tarihe güncelle"
               >
-                <Zap size={13} />
-                <span>Bu Tarihi Hedefim Yap ({optimalWindow.bestDate})</span>
+                <Zap size={11} />
+                <span>Hedefim Yap</span>
               </button>
             )}
           </div>
-          <p className="launch-window-desc">
-            Steam pazarındaki tüm Friendslop, Co-Op ve yaklaşan dev wishlist oyunları tarandı. <strong>{optimalWindow.bestDate}</strong> tarihi sıfır kritik çakışmaya sahip. {optimalWindow.calmReason}
-          </p>
         </div>
       </div>
 
-      {/* 2. SUB-NAVIGATION TABS: MY RADAR vs LIVE STEAM DISCOVERY */}
-      <div className="radar-subnav-bar">
-        <button 
-          className={`radar-tab-btn ${activeRadarTab === 'my-radar' ? 'active' : ''}`}
-          onClick={() => setActiveRadarTab('my-radar')}
-        >
-          <Gamepad2 size={16} />
-          <span>Benim Radarım</span>
-          <span className="radar-tab-badge">{competitors.length} Oyun</span>
-        </button>
+      {/* 2. UNIFIED SEGMENTED NAVIGATION & CONTROLS TOOLBAR */}
+      <div className="radar-modern-toolbar">
+        {/* Segmented Switcher */}
+        <div className="segmented-control">
+          <button 
+            className={`seg-btn ${activeRadarTab === 'my-radar' ? 'active' : ''}`}
+            onClick={() => setActiveRadarTab('my-radar')}
+          >
+            <Gamepad2 size={14} />
+            <span>Radarım</span>
+            <span className="seg-count">{competitors.length}</span>
+          </button>
 
-        <button 
-          className={`radar-tab-btn ${activeRadarTab === 'discovery' ? 'active' : ''}`}
-          onClick={() => setActiveRadarTab('discovery')}
-        >
-          <Radio size={16} className={activeRadarTab === 'discovery' ? 'pulse-icon' : ''} />
-          <span>📡 Canlı Steam Pazar Radarı & Wishlist Havuzu</span>
-          <span className="radar-tab-badge discovery-badge">⭐ Wishlist Devleri</span>
-        </button>
+          <button 
+            className={`seg-btn ${activeRadarTab === 'discovery' ? 'active' : ''}`}
+            onClick={() => setActiveRadarTab('discovery')}
+          >
+            <Radio size={14} className={activeRadarTab === 'discovery' ? 'pulse-icon' : ''} />
+            <span>Steam Keşif & Wishlist</span>
+            <span className="seg-count highlight">{marketDiscoveryDatabase.length}</span>
+          </button>
+        </div>
+
+        {/* Search Box */}
+        <div className="toolbar-search-box">
+          <Search size={15} className="toolbar-search-ico" />
+          <input 
+            type="text" 
+            placeholder={activeRadarTab === 'my-radar' ? "Takipteki oyunları veya etiketleri ara..." : "Wishlist liderleri veya Steam oyunları ara..."}
+            value={activeRadarTab === 'my-radar' ? searchQuery : discoverySearch}
+            onChange={(e) => {
+              if (activeRadarTab === 'my-radar') setSearchQuery(e.target.value);
+              else setDiscoverySearch(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && activeRadarTab === 'discovery') {
+                handleTriggerLiveSteamSearch(discoverySearch);
+              }
+            }}
+          />
+          {(activeRadarTab === 'my-radar' ? searchQuery : discoverySearch) && (
+            <button 
+              className="toolbar-clear-btn"
+              onClick={() => {
+                if (activeRadarTab === 'my-radar') setSearchQuery('');
+                else setDiscoverySearch('');
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {/* Primary Action Button */}
+        <div className="toolbar-actions">
+          {activeRadarTab === 'my-radar' ? (
+            <button 
+              className="btn-pro-primary"
+              onClick={() => setShowAddModal(true)}
+            >
+              <Plus size={14} />
+              <span>Yeni Rakip Ekle</span>
+            </button>
+          ) : (
+            <button 
+              className="btn-pro-secondary"
+              onClick={() => handleTriggerLiveSteamSearch(discoverySearch || 'co-op')}
+              disabled={isLiveSearching}
+            >
+              {isLiveSearching ? (
+                <>
+                  <RefreshCw size={13} className="spin-icon" />
+                  <span>Aranıyor...</span>
+                </>
+              ) : (
+                <>
+                  <Globe size={13} />
+                  <span>Steam'de Canlı Ara</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 3. FILTER CHIPS ROW */}
+      <div className="filter-chips-bar">
+        {activeRadarTab === 'my-radar' ? (
+          <>
+            <button 
+              className={`filter-chip ${filterMode === 'all' ? 'active' : ''}`}
+              onClick={() => setFilterMode('all')}
+            >
+              Tümü ({competitors.length})
+            </button>
+            <button 
+              className={`filter-chip chip-purple ${filterMode === 'upcoming' ? 'active' : ''}`}
+              onClick={() => setFilterMode('upcoming')}
+            >
+              <Star size={12} />
+              <span>🔜 Çıkacak Olanlar ({upcomingInRadar.length})</span>
+            </button>
+            <button 
+              className={`filter-chip chip-red ${filterMode === 'risk' ? 'active' : ''}`}
+              onClick={() => setFilterMode('risk')}
+            >
+              <AlertTriangle size={12} />
+              <span>🚨 Çakışma Riski ({riskyGames.length})</span>
+            </button>
+            <button 
+              className={`filter-chip chip-green ${filterMode === 'safe' ? 'active' : ''}`}
+              onClick={() => setFilterMode('safe')}
+            >
+              <CheckCircle2 size={12} />
+              <span>🟢 Güvenli ({competitors.length - riskyGames.length})</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button 
+              className={`filter-chip chip-star ${discoveryCategory === 'upcoming' ? 'active' : ''}`}
+              onClick={() => setDiscoveryCategory('upcoming')}
+            >
+              <Star size={12} />
+              <span>⭐ Sadece Çıkacak Olanlar (Wishlist)</span>
+            </button>
+            <button 
+              className={`filter-chip ${discoveryCategory === 'all' ? 'active' : ''}`}
+              onClick={() => setDiscoveryCategory('all')}
+            >
+              Tüm Havuz ({marketDiscoveryDatabase.length})
+            </button>
+            <button 
+              className={`filter-chip ${discoveryCategory === 'friendslop' ? 'active' : ''}`}
+              onClick={() => setDiscoveryCategory('friendslop')}
+            >
+              <Flame size={12} />
+              <span>🔥 Friendslop</span>
+            </button>
+            <button 
+              className={`filter-chip ${discoveryCategory === 'voice' ? 'active' : ''}`}
+              onClick={() => setDiscoveryCategory('voice')}
+            >
+              🎙️ Proximity Voice
+            </button>
+            <button 
+              className={`filter-chip ${discoveryCategory === 'horror' ? 'active' : ''}`}
+              onClick={() => setDiscoveryCategory('horror')}
+            >
+              👻 Co-Op Korku
+            </button>
+            <button 
+              className={`filter-chip ${discoveryCategory === 'shooter' ? 'active' : ''}`}
+              onClick={() => setDiscoveryCategory('shooter')}
+            >
+              🔫 Eşli Nişancı
+            </button>
+            <button 
+              className={`filter-chip ${discoveryCategory === 'social' ? 'active' : ''}`}
+              onClick={() => setDiscoveryCategory('social')}
+            >
+              🎲 Sosyal & Parti
+            </button>
+          </>
+        )}
       </div>
 
       {/* ======================================================== */}
       {/* VIEW A: MY RADAR (ACTIVE TRACKED COMPETITORS) */}
       {/* ======================================================== */}
       {activeRadarTab === 'my-radar' && (
-        <>
-          {/* Controls Bar: Search & Simple Filters */}
-          <div className="simple-controls-bar">
-            <div className="simple-search">
-              <Search size={16} />
-              <input 
-                type="text"
-                placeholder="Takip ettiğiniz rakipleri veya etiketleri ara..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button className="clear-btn" onClick={() => setSearchQuery('')}>×</button>
-              )}
-            </div>
+        <div className="pro-cards-grid">
+          {filtered.map((comp) => {
+            const { isRisky, timeText } = getCollision(comp.releaseDate, comp.wishlistTier);
+            const headerImg = comp.headerImage || (comp.appId ? `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${comp.appId}/header.jpg` : null);
+            const isUpcoming = comp.releaseStatus === 'upcoming' || (!comp.releaseStatus && comp.releaseDate >= todayStr);
 
-            <div className="simple-filters">
-              <button 
-                className={`pill-btn ${filterMode === 'all' ? 'active' : ''}`}
-                onClick={() => setFilterMode('all')}
-              >
-                Tümü ({competitors.length})
-              </button>
-              <button 
-                className={`pill-btn upcoming-pill ${filterMode === 'upcoming' ? 'active' : ''}`}
-                onClick={() => setFilterMode('upcoming')}
-              >
-                🔜 Çıkacak Olanlar ({upcomingInRadar.length})
-              </button>
-              <button 
-                className={`pill-btn danger-pill ${filterMode === 'risk' ? 'active' : ''}`}
-                onClick={() => setFilterMode('risk')}
-              >
-                🚨 Çakışma Riski ({riskyGames.length})
-              </button>
-              <button 
-                className={`pill-btn success-pill ${filterMode === 'safe' ? 'active' : ''}`}
-                onClick={() => setFilterMode('safe')}
-              >
-                🟢 Güvenli ({competitors.length - riskyGames.length})
-              </button>
-              <button 
-                className="action-btn-primary"
-                onClick={() => setShowAddModal(true)}
-              >
-                <Plus size={15} /> Yeni Rakip Ekle
-              </button>
-            </div>
-          </div>
-
-          {/* Competitor Cards Grid */}
-          <div className="clean-cards-grid">
-            {filtered.map((comp) => {
-              const { isRisky, timeText } = getCollision(comp.releaseDate, comp.wishlistTier);
-              const headerImg = comp.headerImage || (comp.appId ? `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${comp.appId}/header.jpg` : null);
-              const isUpcoming = comp.releaseStatus === 'upcoming' || (!comp.releaseStatus && comp.releaseDate >= todayStr);
-
-              return (
-                <div key={comp.id} className={`clean-card ${isRisky ? 'card-risk' : ''}`}>
-                  {headerImg && (
-                    <div className="clean-card-image-wrap">
-                      <img 
-                        src={headerImg} 
-                        alt={comp.title} 
-                        className="clean-card-image"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                      {/* Status Badge */}
-                      <span className={`card-image-status-pill status-${comp.releaseStatus || (isUpcoming ? 'upcoming' : 'released')}`}>
-                        {comp.releaseStatus === 'released' 
-                          ? '✅ Piyasada' 
-                          : comp.releaseStatus === 'early_access'
-                          ? '⚡ Erken Erişim'
-                          : '🔜 Çıkacak (Wishlist)'}
-                      </span>
-
-                      {/* Risk Badge */}
-                      <span className={`card-image-risk-pill ${isRisky ? 'pill-risk' : 'pill-safe'}`}>
-                        {isRisky ? '🚨 Çakışma Riski' : '🟢 Güvenli Mesafe'}
-                      </span>
+            return (
+              <div key={comp.id} className={`pro-game-card ${isRisky ? 'card-border-risk' : ''}`}>
+                <div className="pro-card-image-wrap">
+                  {headerImg ? (
+                    <img 
+                      src={headerImg} 
+                      alt={comp.title} 
+                      className="pro-card-image"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="pro-card-placeholder-image">
+                      <Gamepad2 size={24} />
                     </div>
                   )}
+                  <div className="pro-card-gradient-overlay" />
 
-                  <div className="clean-card-header">
+                  {/* Status Pill */}
+                  <span className={`pro-status-pill status-${comp.releaseStatus || (isUpcoming ? 'upcoming' : 'released')}`}>
+                    {comp.releaseStatus === 'released' 
+                      ? '✅ Piyasada' 
+                      : comp.releaseStatus === 'early_access'
+                      ? '⚡ Erken Erişim'
+                      : '🔜 Çıkacak'}
+                  </span>
+
+                  {/* Risk Pill */}
+                  <span className={`pro-risk-pill ${isRisky ? 'risk-active' : 'risk-safe'}`}>
+                    {isRisky ? `🚨 Çakışma (${timeText})` : `🟢 Güvenli (${timeText})`}
+                  </span>
+                </div>
+
+                <div className="pro-card-body">
+                  <div className="pro-card-title-row">
                     <div>
-                      <h3 className="clean-card-title">{comp.title}</h3>
-                      <span className="clean-card-sub">{comp.developer}</span>
+                      <h3 className="pro-card-title">{comp.title}</h3>
+                      <span className="pro-card-dev">{comp.developer}</span>
                     </div>
-                    {!headerImg && (
-                      <span className={`risk-pill ${isRisky ? 'pill-risk' : 'pill-safe'}`}>
-                        {isRisky ? '🚨 Çakışma Riski' : '🟢 Güvenli Mesafe'}
+                    {comp.wishlistEstimate && (
+                      <span className="pro-wishlist-pill" title="Steam Wishlist / Takipçi">
+                        ⭐ {comp.wishlistEstimate.split('(')[0].trim()}
                       </span>
                     )}
                   </div>
 
-                  <div className="clean-timing-row">
-                    <span className="date-text"><Calendar size={13} /> {comp.releaseDate}</span>
-                    <span className={`offset-text ${isRisky ? 'text-red' : ''}`}>{timeText}</span>
-                  </div>
+                  <p className="pro-card-desc">{comp.description}</p>
 
-                  <p className="clean-card-desc">{comp.description}</p>
-
-                  <div className="clean-tags-row">
-                    {comp.genreTags.map((tag, idx) => (
-                      <span key={idx} className="simple-tag">{tag}</span>
+                  <div className="pro-card-tags">
+                    {comp.genreTags.slice(0, 3).map((tag, idx) => (
+                      <span key={idx} className="pro-tag">{tag}</span>
                     ))}
-                  </div>
-
-                  <div className="clean-card-footer">
-                    <div className="discovery-meta-left">
-                      <span className="wishlist-text">{comp.wishlistTier}</span>
-                      {comp.wishlistEstimate && (
-                        <span className="wishlist-estimate-pill">⭐ {comp.wishlistEstimate}</span>
-                      )}
-                    </div>
-
-                    <div className="footer-actions">
-                      {(comp.id.startsWith('custom-') || comp.id.startsWith('imported-') || comp.id.startsWith('steam-')) && (
-                        <button 
-                          className="icon-del-btn" 
-                          onClick={() => handleDelete(comp.id)}
-                          title="Radardan Çıkar"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                      <a 
-                        href={getSteamLink(comp)}
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="clean-link-btn"
-                      >
-                        <span>Steam'de Gör</span>
-                        <ExternalLink size={13} />
-                      </a>
-                    </div>
+                    {comp.genreTags.length > 3 && (
+                      <span className="pro-tag-more">+{comp.genreTags.length - 3}</span>
+                    )}
                   </div>
                 </div>
-              );
-            })}
 
-            {filtered.length === 0 && (
-              <div className="clean-empty-box">
-                Aramanıza uygun aktif rakip oyun bulunamadı.
+                <div className="pro-card-footer">
+                  <div className="pro-footer-meta">
+                    <span className="pro-date-text">
+                      <Calendar size={12} />
+                      <span>{comp.releaseDate}</span>
+                    </span>
+                    {comp.pricingEstimate && (
+                      <span className="pro-price-text">{comp.pricingEstimate}</span>
+                    )}
+                  </div>
+
+                  <div className="pro-footer-actions">
+                    {(comp.id.startsWith('custom-') || comp.id.startsWith('imported-') || comp.id.startsWith('steam-')) && (
+                      <button 
+                        className="pro-btn-icon-del" 
+                        onClick={() => handleDelete(comp.id)}
+                        title="Radardan Sil"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                    <a 
+                      href={getSteamLink(comp)}
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="pro-btn-steam"
+                    >
+                      <span>Steam</span>
+                      <ExternalLink size={11} />
+                    </a>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        </>
+            );
+          })}
+
+          {filtered.length === 0 && (
+            <div className="pro-empty-box">
+              Aramanıza uygun aktif rakip oyun bulunamadı.
+            </div>
+          )}
+        </div>
       )}
 
       {/* ======================================================== */}
@@ -728,174 +808,76 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
       {/* ======================================================== */}
       {activeRadarTab === 'discovery' && (
         <div className="discovery-container">
-          {/* Discovery Hero Banner */}
-          <div className="discovery-hero-card">
-            <div className="discovery-hero-text">
-              <div className="discovery-live-badge">
-                <span className="pulse-dot"></span>
-                <span>Canlı Steam Pazar Radarı & Wishlist İstihbaratı</span>
-              </div>
-              <h2>En Çok İstek Listesine (Wishlist) Eklenen Yaklaşan Rakipler</h2>
-              <p>
-                Bu liste, Steam'de <strong>henüz çıkış yapmamış</strong>, yüz binlerce oyuncunun istek listesinde (Wishlist) bekleyen ve çıkış yaptığında pazar trafiğini çekebilecek en büyük Friendslop, Online Co-Op ve Proximity Voice rakiplerini listeler.
-              </p>
-            </div>
-          </div>
-
-          {/* Discovery Controls Bar */}
-          <div className="discovery-search-panel">
-            <div className="discovery-input-wrapper">
-              <Search size={18} className="search-ico" />
-              <input 
-                type="text" 
-                placeholder="Örn: Blight, Kingmakers, Big Walk, R.E.P.O., Co-Op Korku veya Steam oyunu..."
-                value={discoverySearch}
-                onChange={(e) => setDiscoverySearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleTriggerLiveSteamSearch(discoverySearch);
-                  }
-                }}
-              />
-              {discoverySearch && (
-                <button className="clear-btn" onClick={() => setDiscoverySearch('')}>×</button>
-              )}
-              <button 
-                className="live-steam-search-btn"
-                onClick={() => handleTriggerLiveSteamSearch(discoverySearch || 'co-op')}
-                disabled={isLiveSearching}
-                title="Steam Mağaza API'sinden canlı ara"
-              >
-                {isLiveSearching ? (
-                  <>
-                    <RefreshCw size={14} className="spin-icon" />
-                    <span>Taranıyor...</span>
-                  </>
-                ) : (
-                  <>
-                    <Globe size={14} />
-                    <span>Steam'de Canlı Ara</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Category Chips */}
-            <div className="discovery-chips-row">
-              <button 
-                className={`category-chip chip-upcoming-leader ${discoveryCategory === 'upcoming' ? 'active' : ''}`}
-                onClick={() => setDiscoveryCategory('upcoming')}
-              >
-                <Star size={13} />
-                <span>⭐ Sadece Çıkacak Olanlar (Wishlist Devleri)</span>
-              </button>
-              <button 
-                className={`category-chip ${discoveryCategory === 'all' ? 'active' : ''}`}
-                onClick={() => setDiscoveryCategory('all')}
-              >
-                Tüm Havuz ({marketDiscoveryDatabase.length})
-              </button>
-              <button 
-                className={`category-chip ${discoveryCategory === 'friendslop' ? 'active' : ''}`}
-                onClick={() => setDiscoveryCategory('friendslop')}
-              >
-                <Flame size={13} />
-                <span>🔥 Friendslop / Kaotik</span>
-              </button>
-              <button 
-                className={`category-chip ${discoveryCategory === 'voice' ? 'active' : ''}`}
-                onClick={() => setDiscoveryCategory('voice')}
-              >
-                🎙️ Proximity Voice
-              </button>
-              <button 
-                className={`category-chip ${discoveryCategory === 'horror' ? 'active' : ''}`}
-                onClick={() => setDiscoveryCategory('horror')}
-              >
-                👻 Co-Op Korku
-              </button>
-              <button 
-                className={`category-chip ${discoveryCategory === 'shooter' ? 'active' : ''}`}
-                onClick={() => setDiscoveryCategory('shooter')}
-              >
-                🔫 Eşli Nişancı
-              </button>
-              <button 
-                className={`category-chip ${discoveryCategory === 'social' ? 'active' : ''}`}
-                onClick={() => setDiscoveryCategory('social')}
-              >
-                🎲 Sosyal & Parti
-              </button>
-            </div>
-          </div>
-
           {/* Live Steam Search Results (if available) */}
           {liveSteamResults.length > 0 && (
             <div className="live-results-section">
               <div className="live-results-header">
-                <Globe size={16} className="text-cyan-400" />
+                <Globe size={15} className="text-cyan-400" />
                 <h3>Steam Canlı Arama Sonuçları ({liveSteamResults.length})</h3>
                 <button 
                   className="btn-clear-live"
                   onClick={() => setLiveSteamResults([])}
                 >
-                  Sonuçları Kapat
+                  Kapat
                 </button>
               </div>
 
-              <div className="clean-cards-grid">
+              <div className="pro-cards-grid">
                 {liveSteamResults.map((item) => {
                   const alreadyAdded = isGameTracked(item.title, item.appId);
                   const isJustAdded = justAddedId === item.id;
 
                   return (
-                    <div key={item.id} className="clean-card live-steam-card">
-                      <div className="clean-card-image-wrap">
+                    <div key={item.id} className="pro-game-card">
+                      <div className="pro-card-image-wrap">
                         <img 
                           src={item.headerImage} 
                           alt={item.title} 
-                          className="clean-card-image"
+                          className="pro-card-image"
                           loading="lazy"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = item.tinyImage;
                           }}
                         />
-                        <span className="live-steam-badge">Canlı Steam</span>
+                        <div className="pro-card-gradient-overlay" />
+                        <span className="pro-status-pill status-early_access">Steam Canlı</span>
                       </div>
 
-                      <div className="clean-card-header">
-                        <div>
-                          <h3 className="clean-card-title">{item.title}</h3>
-                          <span className="clean-card-sub">App ID: {item.appId}</span>
+                      <div className="pro-card-body">
+                        <div className="pro-card-title-row">
+                          <div>
+                            <h3 className="pro-card-title">{item.title}</h3>
+                            <span className="pro-card-dev">App ID: {item.appId}</span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="clean-card-footer">
-                        <span className="wishlist-text">{item.price}</span>
-                        <div className="footer-actions">
+                      <div className="pro-card-footer">
+                        <span className="pro-price-text">{item.price}</span>
+                        <div className="pro-footer-actions">
                           <a 
                             href={item.steamUrl} 
                             target="_blank" 
                             rel="noreferrer" 
-                            className="clean-link-btn"
+                            className="pro-btn-steam"
                           >
-                            <span>Steam'de Aç</span>
-                            <ExternalLink size={13} />
+                            <span>Steam</span>
+                            <ExternalLink size={11} />
                           </a>
                           <button 
-                            className={`action-btn-import ${alreadyAdded ? 'imported' : ''}`}
+                            className={`pro-btn-import ${alreadyAdded ? 'imported' : ''}`}
                             onClick={() => handleImportLiveSteamItem(item)}
                             disabled={alreadyAdded}
                           >
                             {alreadyAdded || isJustAdded ? (
                               <>
-                                <Check size={14} />
-                                <span>Radarda Ekli</span>
+                                <Check size={12} />
+                                <span>Ekli</span>
                               </>
                             ) : (
                               <>
-                                <Plus size={14} />
-                                <span>Radarıma Ekle</span>
+                                <Plus size={12} />
+                                <span>Radara Ekle</span>
                               </>
                             )}
                           </button>
@@ -910,113 +892,103 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
 
           {liveSearchError && (
             <div className="live-search-hint-box">
-              <AlertTriangle size={15} />
+              <AlertTriangle size={14} />
               <span>{liveSearchError}</span>
             </div>
           )}
 
           {/* Curated Market Discovery Cards Grid */}
-          <div className="discovery-section-title">
-            <TrendingUp size={16} />
-            <span>
-              {discoveryCategory === 'upcoming' 
-                ? `⭐ En Çok İstek Listesine (Wishlist) Eklenen Yaklaşan Oyunlar (${filteredDiscovery.length})`
-                : `Takip Edilen Güncel Pazar Havuzu (${filteredDiscovery.length} Oyun)`}
-            </span>
-          </div>
-
-          <div className="clean-cards-grid">
+          <div className="pro-cards-grid">
             {filteredDiscovery.map((game) => {
               const { isRisky, isMediumRisk, timeText } = getCollision(game.releaseDate, game.wishlistTier);
               const alreadyAdded = isGameTracked(game.title, game.appId);
               const isJustAdded = justAddedId === game.id;
 
               return (
-                <div key={game.id} className={`clean-card discovery-card ${isRisky ? 'card-risk' : ''}`}>
-                  <div className="clean-card-image-wrap">
+                <div key={game.id} className={`pro-game-card ${isRisky ? 'card-border-risk' : ''}`}>
+                  <div className="pro-card-image-wrap">
                     <img 
                       src={game.headerImage} 
                       alt={game.title} 
-                      className="clean-card-image"
+                      className="pro-card-image"
                       loading="lazy"
                     />
+                    <div className="pro-card-gradient-overlay" />
 
-                    {/* Status Pill (Upcoming / Early Access / Released) */}
-                    <span className={`card-image-status-pill status-${game.releaseStatus}`}>
+                    {/* Status Pill */}
+                    <span className={`pro-status-pill status-${game.releaseStatus}`}>
                       {game.releaseStatus === 'released' 
                         ? '✅ Piyasada' 
                         : game.releaseStatus === 'early_access'
                         ? '⚡ Erken Erişim'
-                        : '🔜 Çıkacak (Wishlist)'}
+                        : '🔜 Çıkacak'}
                     </span>
 
                     {/* Risk Pill */}
-                    <span className={`card-image-risk-pill ${isRisky ? 'pill-risk' : isMediumRisk ? 'pill-medium' : 'pill-safe'}`}>
-                      {isRisky ? '🚨 Kritik Çakışma' : isMediumRisk ? '⚠️ Yüksek Risk' : '🟢 Güvenli Mesafe'}
+                    <span className={`pro-risk-pill ${isRisky ? 'risk-active' : isMediumRisk ? 'risk-medium' : 'risk-safe'}`}>
+                      {isRisky ? `🚨 Çakışma (${timeText})` : isMediumRisk ? `⚠️ Risk (${timeText})` : `🟢 Güvenli (${timeText})`}
                     </span>
                   </div>
 
-                  <div className="clean-card-header">
-                    <div>
-                      <h3 className="clean-card-title">{game.title}</h3>
-                      <span className="clean-card-sub">{game.developer}</span>
-                    </div>
-                  </div>
-
-                  <div className="clean-timing-row">
-                    <span className="date-text"><Calendar size={13} /> {game.releaseDate} ({game.releaseWindowDisplay})</span>
-                    <span className={`offset-text ${isRisky ? 'text-red' : ''}`}>{timeText}</span>
-                  </div>
-
-                  <p className="clean-card-desc">{game.threatAnalysis}</p>
-
-                  <div className="clean-tags-row">
-                    {game.genreTags.map((tag, idx) => (
-                      <span key={idx} className="simple-tag">{tag}</span>
-                    ))}
-                  </div>
-
-                  <div className="discovery-mechanics-row">
-                    {game.mechanics.map((mech, idx) => (
-                      <span key={idx} className="mechanic-tag">⚡ {mech}</span>
-                    ))}
-                  </div>
-
-                  <div className="clean-card-footer">
-                    <div className="discovery-meta-left">
-                      <span className="wishlist-text">{game.wishlistTier}</span>
+                  <div className="pro-card-body">
+                    <div className="pro-card-title-row">
+                      <div>
+                        <h3 className="pro-card-title">{game.title}</h3>
+                        <span className="pro-card-dev">{game.developer}</span>
+                      </div>
                       {game.wishlistEstimate && (
-                        <span className="wishlist-estimate-pill">⭐ {game.wishlistEstimate}</span>
+                        <span className="pro-wishlist-pill" title="Steam Wishlist / Takipçi">
+                          ⭐ {game.wishlistEstimate.split('(')[0].trim()}
+                        </span>
                       )}
-                      <span className="price-tag-sub">{game.priceEstimate}</span>
                     </div>
 
-                    <div className="footer-actions">
+                    <p className="pro-card-desc">{game.threatAnalysis}</p>
+
+                    <div className="pro-card-tags">
+                      {game.genreTags.slice(0, 3).map((tag, idx) => (
+                        <span key={idx} className="pro-tag">{tag}</span>
+                      ))}
+                      {game.genreTags.length > 3 && (
+                        <span className="pro-tag-more">+{game.genreTags.length - 3}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pro-card-footer">
+                    <div className="pro-footer-meta">
+                      <span className="pro-date-text">
+                        <Calendar size={12} />
+                        <span>{game.releaseDate}</span>
+                      </span>
+                      <span className="pro-price-text">{game.priceEstimate}</span>
+                    </div>
+
+                    <div className="pro-footer-actions">
                       <a 
                         href={game.steamUrl} 
                         target="_blank" 
                         rel="noreferrer" 
-                        className="clean-link-btn"
+                        className="pro-btn-steam"
                       >
                         <span>Steam</span>
-                        <ExternalLink size={13} />
+                        <ExternalLink size={11} />
                       </a>
 
                       <button 
-                        className={`action-btn-import ${alreadyAdded ? 'imported' : ''}`}
+                        className={`pro-btn-import ${alreadyAdded ? 'imported' : ''}`}
                         onClick={() => handleImportToRadar(game)}
                         disabled={alreadyAdded}
-                        title={alreadyAdded ? 'Bu oyun zaten aktif radarınızda kayıtlı' : 'Bu oyunu takip listenize ekleyin'}
                       >
                         {alreadyAdded || isJustAdded ? (
                           <>
-                            <Check size={14} />
-                            <span>Radarda Ekli</span>
+                            <Check size={12} />
+                            <span>Ekli</span>
                           </>
                         ) : (
                           <>
-                            <Plus size={14} />
-                            <span>Radarıma Ekle</span>
+                            <Plus size={12} />
+                            <span>Radara Ekle</span>
                           </>
                         )}
                       </button>
@@ -1027,7 +999,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
             })}
 
             {filteredDiscovery.length === 0 && (
-              <div className="clean-empty-box">
+              <div className="pro-empty-box">
                 Arama kriterlerinize uygun pazar oyunu bulunamadı.
               </div>
             )}
@@ -1093,7 +1065,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                 <div className="input-group">
                   <label>İstek Listesi (Wishlist) Tahmini</label>
                   <input 
-                    type="text"
+                    type="text" 
                     value={newWishlistEst}
                     onChange={(e) => setNewWishlistEst(e.target.value)}
                     placeholder="Örn: 250k+ Wishlist (#20 Steam)"

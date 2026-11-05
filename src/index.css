@@ -1,27 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  /* Softer, cleaner dark theme palette */
-  --bg-page: #0d1117;
-  --bg-card: #161b22;
-  --bg-card-hover: #1c2128;
-  --bg-subtle: #21262d;
-  --bg-input: #0d1117;
+  /* Modern clean SaaS dark theme palette */
+  --bg-page: #0b0f17;
+  --bg-card: #111827;
+  --bg-card-hover: #162032;
+  --bg-subtle: #1a2333;
+  --bg-input: #0e1420;
 
-  --border: #30363d;
-  --border-subtle: #21262d;
-  --border-focus: #58a6ff;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-focus: #38bdf8;
 
-  --text-main: #f0f6fc;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
+  --text-main: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
 
   /* Restrained semantic accents */
-  --accent-primary: #58a6ff;
-  --accent-purple: #a371f7;
-  --accent-green: #3fb950;
-  --accent-amber: #d29922;
-  --accent-red: #f85149;
+  --accent-primary: #38bdf8;
+  --accent-purple: #a855f7;
+  --accent-green: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', Consolas, monospace;
