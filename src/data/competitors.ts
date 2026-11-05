@@ -3,6 +3,7 @@ import type { CompetitorGame } from '../types';
 export const initialCompetitors: CompetitorGame[] = [
   {
     id: 'comp-0',
+    appId: 1966720,
     title: 'Lethal Company',
     developer: 'Zeekerss',
     releaseDate: '2026-11-08',
@@ -13,9 +14,11 @@ export const initialCompetitors: CompetitorGame[] = [
     keyMechanics: ['Ses Duyarlı Yapay Zeka', 'Ağır Eşya Taşıma', 'Telsiz Mesafesi', 'Komik Ragdoll'],
     pricingEstimate: '$9.99',
     steamUrl: 'https://store.steampowered.com/app/1966720/Lethal_Company/',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1966720/header.jpg',
   },
   {
     id: 'comp-1',
+    appId: 2963880,
     title: 'Murky Divers',
     developer: 'Boba Studios / Oro Interactive',
     releaseDate: '2026-11-15',
@@ -26,9 +29,11 @@ export const initialCompetitors: CompetitorGame[] = [
     keyMechanics: ['Yakınlık Sesi (Proximity Chat)', 'Denizaltı Oksijen Yönetimi', 'Komik Ragdoll Ölümleri'],
     pricingEstimate: '$6.99',
     steamUrl: 'https://store.steampowered.com/app/2963880/Murky_Divers/',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2963880/header.jpg',
   },
   {
     id: 'comp-3',
+    appId: 2881650,
     title: 'Content Warning',
     developer: 'Landfall Games',
     releaseDate: '2026-11-28',
@@ -39,9 +44,11 @@ export const initialCompetitors: CompetitorGame[] = [
     keyMechanics: ['Kamera Kaydı & Fener', 'Sesli Çığlıklar', 'Viral İzlenme Kotası'],
     pricingEstimate: '$7.99',
     steamUrl: 'https://store.steampowered.com/app/2881650/Content_Warning/',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2881650/header.jpg',
   },
   {
     id: 'comp-5',
+    appId: 2567870,
     title: 'Chained Together',
     developer: 'Anegar Games',
     releaseDate: '2026-12-05',
@@ -52,9 +59,11 @@ export const initialCompetitors: CompetitorGame[] = [
     keyMechanics: ['Birlikte Zincire Bağlı Olma', 'Öfke Tetikleyici Fizik', 'Yüksekten Düşme Kaosu'],
     pricingEstimate: '$5.99',
     steamUrl: 'https://store.steampowered.com/app/2567870/Chained_Together/',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2567870/header.jpg',
   },
   {
     id: 'comp-4',
+    appId: 3097560,
     title: "Liar's Bar",
     developer: 'Curve Animation',
     releaseDate: '2026-12-20',
@@ -65,9 +74,11 @@ export const initialCompetitors: CompetitorGame[] = [
     keyMechanics: ['Sosyal Çıkarım (Blöf)', 'Rus Ruleti', 'Zar & Kart Mekaniği'],
     pricingEstimate: '$6.99',
     steamUrl: 'https://store.steampowered.com/app/3097560/Liars_Bar/',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3097560/header.jpg',
   },
   {
     id: 'comp-2',
+    appId: 1943950,
     title: 'Escape the Backrooms',
     developer: 'Fancy Games',
     releaseDate: '2027-01-15',
@@ -78,9 +89,11 @@ export const initialCompetitors: CompetitorGame[] = [
     keyMechanics: ['Liminal Mekanlar', 'Telsiz İletişimi', 'Varlık Kaçışı'],
     pricingEstimate: '$9.99',
     steamUrl: 'https://store.steampowered.com/app/1943950/Escape_the_Backrooms/',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1943950/header.jpg',
   },
   {
     id: 'comp-6',
+    appId: 739630,
     title: 'Phasmophobia',
     developer: 'Kinetic Games',
     releaseDate: '2027-02-05',
@@ -91,5 +104,6 @@ export const initialCompetitors: CompetitorGame[] = [
     keyMechanics: ['Mikrofon Sesiyle Hayalet Çağırma', 'Termometre & EMF', 'Akıl Sağlığı Sayacı'],
     pricingEstimate: '$13.99',
     steamUrl: 'https://store.steampowered.com/app/739630/Phasmophobia/',
+    headerImage: 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/739630/header.jpg',
   },
 ];

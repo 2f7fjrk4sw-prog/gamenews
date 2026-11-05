@@ -16,6 +16,8 @@ export interface CompetitorGame {
   description: string;
   keyMechanics: string[];
   pricingEstimate?: string;
+  headerImage?: string;
+  appId?: number | string;
 }
 
 export interface MarketingChannel {
