@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { CompetitorGame, WishlistTier } from '../types';
+import type { CompetitorGame, WishlistTier, GameReleaseStatus } from '../types';
 import { 
   marketDiscoveryDatabase, 
   type MarketDiscoveryGame 
@@ -19,7 +19,9 @@ import {
   RefreshCw,
   Check,
   Zap,
-  Globe
+  Globe,
+  Flame,
+  Star
 } from 'lucide-react';
 
 interface RadarSectionProps {
@@ -42,6 +44,23 @@ interface LiveSteamItem {
 }
 
 const STEAM_KNOWN_GAMES: Record<string, string> = {
+  // Blight: Survival
+  'comp-blight': 'https://store.steampowered.com/app/1774880/Blight_Survival/',
+  'blight: survival': 'https://store.steampowered.com/app/1774880/Blight_Survival/',
+
+  // Kingmakers
+  'comp-kingmakers': 'https://store.steampowered.com/app/2109770/Kingmakers/',
+  'kingmakers': 'https://store.steampowered.com/app/2109770/Kingmakers/',
+
+  // R.E.P.O.
+  'comp-repo': 'https://store.steampowered.com/app/3241660/REPO/',
+  'r.e.p.o.': 'https://store.steampowered.com/app/3241660/REPO/',
+  'repo': 'https://store.steampowered.com/app/3241660/REPO/',
+
+  // Big Walk
+  'comp-bigwalk': 'https://store.steampowered.com/app/1478500/Big_Walk/',
+  'big walk': 'https://store.steampowered.com/app/1478500/Big_Walk/',
+
   // Lethal Company
   'comp-0': 'https://store.steampowered.com/app/1966720/Lethal_Company/',
   'lethal company': 'https://store.steampowered.com/app/1966720/Lethal_Company/',
@@ -63,14 +82,6 @@ const STEAM_KNOWN_GAMES: Record<string, string> = {
   'comp-4': 'https://store.steampowered.com/app/3097560/Liars_Bar/',
   "liar's bar": 'https://store.steampowered.com/app/3097560/Liars_Bar/',
   'liars bar': 'https://store.steampowered.com/app/3097560/Liars_Bar/',
-
-  // Escape the Backrooms
-  'comp-2': 'https://store.steampowered.com/app/1943950/Escape_the_Backrooms/',
-  'escape the backrooms': 'https://store.steampowered.com/app/1943950/Escape_the_Backrooms/',
-
-  // Phasmophobia
-  'comp-6': 'https://store.steampowered.com/app/739630/Phasmophobia/',
-  'phasmophobia': 'https://store.steampowered.com/app/739630/Phasmophobia/',
 };
 
 const getSteamLink = (comp: CompetitorGame): string => {
@@ -126,11 +137,11 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
 
   // Search & Filter for My Radar
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterMode, setFilterMode] = useState<'all' | 'risk' | 'safe'>('all');
+  const [filterMode, setFilterMode] = useState<'all' | 'upcoming' | 'risk' | 'safe'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Discovery Section State
-  const [discoveryCategory, setDiscoveryCategory] = useState<'all' | 'friendslop' | 'voice' | 'horror' | 'shooter' | 'social'>('all');
+  // Discovery Section State - Default to 'upcoming' so user directly sees unreleased wishlist hits!
+  const [discoveryCategory, setDiscoveryCategory] = useState<'all' | 'upcoming' | 'friendslop' | 'voice' | 'horror' | 'shooter' | 'social'>('upcoming');
   const [discoverySearch, setDiscoverySearch] = useState('');
   const [liveSteamResults, setLiveSteamResults] = useState<LiveSteamItem[]>([]);
   const [isLiveSearching, setIsLiveSearching] = useState(false);
@@ -150,8 +161,10 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
   const [newTitle, setNewTitle] = useState('');
   const [newDev, setNewDev] = useState('');
   const [newDate, setNewDate] = useState('2026-12-10');
-  const [newWishlist, setNewWishlist] = useState<WishlistTier>('Moderate (10k-50k)');
-  const [newTags, setNewTags] = useState('Online Co-Op, Friendslop');
+  const [newWishlist, setNewWishlist] = useState<WishlistTier>('High (50k-100k)');
+  const [newStatus, setNewStatus] = useState<GameReleaseStatus>('upcoming');
+  const [newWishlistEst, setNewWishlistEst] = useState('100k+ Wishlist');
+  const [newTags, setNewTags] = useState('Online Co-Op, Proximity Voice');
   const [newDesc, setNewDesc] = useState('');
   const [newSteamUrl, setNewSteamUrl] = useState('');
 
@@ -178,6 +191,11 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
   const riskyGames = useMemo(() => {
     return competitors.filter(c => getCollision(c.releaseDate, c.wishlistTier).isRisky);
   }, [competitors, getCollision]);
+
+  // Count upcoming in radar
+  const upcomingInRadar = useMemo(() => {
+    return competitors.filter(c => c.releaseStatus === 'upcoming' || (!c.releaseStatus && c.releaseDate >= todayStr));
+  }, [competitors, todayStr]);
 
   // SMART LAUNCH WINDOW RECOMMENDER ALGORITHM
   // Scans future calendar Fridays (standard Steam release days) and finds the calmest window with zero critical conflicts
@@ -233,7 +251,6 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
       }
     }
 
-    // Fallback if no window with minDistance >= 10
     if (!bestDate) {
       bestDate = '2027-02-12';
       bestScore = 95;
@@ -271,6 +288,8 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
       headerImage: game.headerImage,
       wishlistTier: game.wishlistTier,
       collisionRisk: 'Medium',
+      releaseStatus: game.releaseStatus,
+      wishlistEstimate: game.wishlistEstimate,
       description: game.threatAnalysis,
       keyMechanics: game.mechanics,
       pricingEstimate: game.priceEstimate,
@@ -280,7 +299,6 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
     setCompetitors(updated);
     localStorage.setItem('game_competitors', JSON.stringify(updated));
 
-    // Flash success feedback
     setJustAddedId(game.id);
     setTimeout(() => setJustAddedId(null), 2500);
   };
@@ -294,12 +312,14 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
       appId: item.appId,
       title: item.title,
       developer: 'Steam Geliştiricisi',
-      releaseDate: targetDate, // Defaults to target date for user adjustment
+      releaseDate: targetDate,
       genreTags: ['Steam Keşfi', 'Multiplayer / Co-Op'],
       steamUrl: item.steamUrl,
       headerImage: item.headerImage,
       wishlistTier: 'High (50k-100k)',
       collisionRisk: 'Medium',
+      releaseStatus: 'upcoming',
+      wishlistEstimate: 'Canlı Steam Keşfi',
       description: `${item.title} - Canlı Steam mağaza aramasından radara eklendi.`,
       keyMechanics: ['Online Eşleşme', 'Steam Topluluğu'],
       pricingEstimate: item.price,
@@ -343,8 +363,10 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
   // Filtered Discovery List
   const filteredDiscovery = useMemo(() => {
     return marketDiscoveryDatabase.filter(game => {
-      // Category filter
-      if (discoveryCategory === 'friendslop') {
+      // Sadece çıkacak olan wishlist devleri filtresi
+      if (discoveryCategory === 'upcoming') {
+        if (game.releaseStatus !== 'upcoming') return false;
+      } else if (discoveryCategory === 'friendslop') {
         const isF = game.genreTags.some(t => t.toLowerCase().includes('friendslop') || t.toLowerCase().includes('physics'));
         if (!isF) return false;
       } else if (discoveryCategory === 'voice') {
@@ -368,7 +390,8 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
           game.title.toLowerCase().includes(q) ||
           game.developer.toLowerCase().includes(q) ||
           game.genreTags.some(t => t.toLowerCase().includes(q)) ||
-          game.mechanics.some(m => m.toLowerCase().includes(q))
+          game.mechanics.some(m => m.toLowerCase().includes(q)) ||
+          (game.wishlistEstimate && game.wishlistEstimate.toLowerCase().includes(q))
         );
       }
 
@@ -392,6 +415,8 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
       releaseDate: newDate,
       wishlistTier: newWishlist,
       collisionRisk: 'Medium',
+      releaseStatus: newStatus,
+      wishlistEstimate: newWishlistEst.trim() || 'Wishlist Aşamasında',
       genreTags: newTags.split(',').map(t => t.trim()).filter(Boolean),
       keyMechanics: ['Yakınlık Sesi', 'Kaotik Co-Op'],
       description: newDesc.trim() || 'Steam de listelenen rakip oyun.',
@@ -420,6 +445,10 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
   const filtered = competitors.filter(comp => {
     const { isRisky } = getCollision(comp.releaseDate, comp.wishlistTier);
 
+    if (filterMode === 'upcoming') {
+      const isUp = comp.releaseStatus === 'upcoming' || (!comp.releaseStatus && comp.releaseDate >= todayStr);
+      if (!isUp) return false;
+    }
     if (filterMode === 'risk' && !isRisky) return false;
     if (filterMode === 'safe' && isRisky) return false;
 
@@ -428,7 +457,8 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
       return (
         comp.title.toLowerCase().includes(q) ||
         comp.developer.toLowerCase().includes(q) ||
-        comp.genreTags.some(t => t.toLowerCase().includes(q))
+        comp.genreTags.some(t => t.toLowerCase().includes(q)) ||
+        (comp.wishlistEstimate && comp.wishlistEstimate.toLowerCase().includes(q))
       );
     }
     return true;
@@ -510,7 +540,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
             )}
           </div>
           <p className="launch-window-desc">
-            Steam pazarındaki tüm Friendslop ve Co-Op çıkış takvimi tarandı. <strong>{optimalWindow.bestDate}</strong> tarihi sıfır kritik çakışmaya sahip. {optimalWindow.calmReason}
+            Steam pazarındaki tüm Friendslop, Co-Op ve yaklaşan dev wishlist oyunları tarandı. <strong>{optimalWindow.bestDate}</strong> tarihi sıfır kritik çakışmaya sahip. {optimalWindow.calmReason}
           </p>
         </div>
       </div>
@@ -531,8 +561,8 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
           onClick={() => setActiveRadarTab('discovery')}
         >
           <Radio size={16} className={activeRadarTab === 'discovery' ? 'pulse-icon' : ''} />
-          <span>📡 Canlı Steam Pazar Radarı & Keşif</span>
-          <span className="radar-tab-badge discovery-badge">16+ Güncel Rakip</span>
+          <span>📡 Canlı Steam Pazar Radarı & Wishlist Havuzu</span>
+          <span className="radar-tab-badge discovery-badge">⭐ Wishlist Devleri</span>
         </button>
       </div>
 
@@ -564,6 +594,12 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                 Tümü ({competitors.length})
               </button>
               <button 
+                className={`pill-btn upcoming-pill ${filterMode === 'upcoming' ? 'active' : ''}`}
+                onClick={() => setFilterMode('upcoming')}
+              >
+                🔜 Çıkacak Olanlar ({upcomingInRadar.length})
+              </button>
+              <button 
                 className={`pill-btn danger-pill ${filterMode === 'risk' ? 'active' : ''}`}
                 onClick={() => setFilterMode('risk')}
               >
@@ -589,6 +625,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
             {filtered.map((comp) => {
               const { isRisky, timeText } = getCollision(comp.releaseDate, comp.wishlistTier);
               const headerImg = comp.headerImage || (comp.appId ? `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${comp.appId}/header.jpg` : null);
+              const isUpcoming = comp.releaseStatus === 'upcoming' || (!comp.releaseStatus && comp.releaseDate >= todayStr);
 
               return (
                 <div key={comp.id} className={`clean-card ${isRisky ? 'card-risk' : ''}`}>
@@ -600,10 +637,19 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                         className="clean-card-image"
                         loading="lazy"
                         onError={(e) => {
-                          // Hide image gracefully if 404
                           (e.target as HTMLElement).style.display = 'none';
                         }}
                       />
+                      {/* Status Badge */}
+                      <span className={`card-image-status-pill status-${comp.releaseStatus || (isUpcoming ? 'upcoming' : 'released')}`}>
+                        {comp.releaseStatus === 'released' 
+                          ? '✅ Piyasada' 
+                          : comp.releaseStatus === 'early_access'
+                          ? '⚡ Erken Erişim'
+                          : '🔜 Çıkacak (Wishlist)'}
+                      </span>
+
+                      {/* Risk Badge */}
                       <span className={`card-image-risk-pill ${isRisky ? 'pill-risk' : 'pill-safe'}`}>
                         {isRisky ? '🚨 Çakışma Riski' : '🟢 Güvenli Mesafe'}
                       </span>
@@ -636,7 +682,13 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                   </div>
 
                   <div className="clean-card-footer">
-                    <span className="wishlist-text">{comp.wishlistTier}</span>
+                    <div className="discovery-meta-left">
+                      <span className="wishlist-text">{comp.wishlistTier}</span>
+                      {comp.wishlistEstimate && (
+                        <span className="wishlist-estimate-pill">⭐ {comp.wishlistEstimate}</span>
+                      )}
+                    </div>
+
                     <div className="footer-actions">
                       {(comp.id.startsWith('custom-') || comp.id.startsWith('imported-') || comp.id.startsWith('steam-')) && (
                         <button 
@@ -681,13 +733,11 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
             <div className="discovery-hero-text">
               <div className="discovery-live-badge">
                 <span className="pulse-dot"></span>
-                <span>Canlı Steam Pazar Radarı & Otomatik Rakip Taraması</span>
+                <span>Canlı Steam Pazar Radarı & Wishlist İstihbaratı</span>
               </div>
-              <h2>Friendslop, Online Co-Op & Proximity Voice Pazar Takibi</h2>
+              <h2>En Çok İstek Listesine (Wishlist) Eklenen Yaklaşan Rakipler</h2>
               <p>
-                Bu algoritma, Steam'de yaklaşan veya popüler olan doğrudan rakipleri sürekli tarar.
-                Oyununuza olan tehdit seviyelerini ve hedef çıkış tarihinize olan çakışma mesafelerini otomatik hesaplar.
-                İlgilendiğiniz rakipleri tek tıkla radara ekleyebilir ve takımınızla bulutta senkronize edebilirsiniz.
+                Bu liste, Steam'de <strong>henüz çıkış yapmamış</strong>, yüz binlerce oyuncunun istek listesinde (Wishlist) bekleyen ve çıkış yaptığında pazar trafiğini çekebilecek en büyük Friendslop, Online Co-Op ve Proximity Voice rakiplerini listeler.
               </p>
             </div>
           </div>
@@ -698,7 +748,7 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
               <Search size={18} className="search-ico" />
               <input 
                 type="text" 
-                placeholder="Örn: R.E.P.O., Panicore, Co-Op Korku, Simülatör veya Steam oyunu..."
+                placeholder="Örn: Blight, Kingmakers, Big Walk, R.E.P.O., Co-Op Korku veya Steam oyunu..."
                 value={discoverySearch}
                 onChange={(e) => setDiscoverySearch(e.target.value)}
                 onKeyDown={(e) => {
@@ -733,6 +783,13 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
             {/* Category Chips */}
             <div className="discovery-chips-row">
               <button 
+                className={`category-chip chip-upcoming-leader ${discoveryCategory === 'upcoming' ? 'active' : ''}`}
+                onClick={() => setDiscoveryCategory('upcoming')}
+              >
+                <Star size={13} />
+                <span>⭐ Sadece Çıkacak Olanlar (Wishlist Devleri)</span>
+              </button>
+              <button 
                 className={`category-chip ${discoveryCategory === 'all' ? 'active' : ''}`}
                 onClick={() => setDiscoveryCategory('all')}
               >
@@ -742,7 +799,8 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                 className={`category-chip ${discoveryCategory === 'friendslop' ? 'active' : ''}`}
                 onClick={() => setDiscoveryCategory('friendslop')}
               >
-                🔥 Friendslop / Kaotik
+                <Flame size={13} />
+                <span>🔥 Friendslop / Kaotik</span>
               </button>
               <button 
                 className={`category-chip ${discoveryCategory === 'voice' ? 'active' : ''}`}
@@ -860,7 +918,11 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
           {/* Curated Market Discovery Cards Grid */}
           <div className="discovery-section-title">
             <TrendingUp size={16} />
-            <span>Takip Edilen Güncel Pazar Havuzu ({filteredDiscovery.length} Oyun)</span>
+            <span>
+              {discoveryCategory === 'upcoming' 
+                ? `⭐ En Çok İstek Listesine (Wishlist) Eklenen Yaklaşan Oyunlar (${filteredDiscovery.length})`
+                : `Takip Edilen Güncel Pazar Havuzu (${filteredDiscovery.length} Oyun)`}
+            </span>
           </div>
 
           <div className="clean-cards-grid">
@@ -878,6 +940,17 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                       className="clean-card-image"
                       loading="lazy"
                     />
+
+                    {/* Status Pill (Upcoming / Early Access / Released) */}
+                    <span className={`card-image-status-pill status-${game.releaseStatus}`}>
+                      {game.releaseStatus === 'released' 
+                        ? '✅ Piyasada' 
+                        : game.releaseStatus === 'early_access'
+                        ? '⚡ Erken Erişim'
+                        : '🔜 Çıkacak (Wishlist)'}
+                    </span>
+
+                    {/* Risk Pill */}
                     <span className={`card-image-risk-pill ${isRisky ? 'pill-risk' : isMediumRisk ? 'pill-medium' : 'pill-safe'}`}>
                       {isRisky ? '🚨 Kritik Çakışma' : isMediumRisk ? '⚠️ Yüksek Risk' : '🟢 Güvenli Mesafe'}
                     </span>
@@ -912,6 +985,9 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                   <div className="clean-card-footer">
                     <div className="discovery-meta-left">
                       <span className="wishlist-text">{game.wishlistTier}</span>
+                      {game.wishlistEstimate && (
+                        <span className="wishlist-estimate-pill">⭐ {game.wishlistEstimate}</span>
+                      )}
                       <span className="price-tag-sub">{game.priceEstimate}</span>
                     </div>
 
@@ -1002,8 +1078,31 @@ export const RadarSection: React.FC<RadarSectionProps> = ({
                 </div>
               </div>
 
+              <div className="input-group-row">
+                <div className="input-group">
+                  <label>Yayınlanma Durumu</label>
+                  <select 
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as GameReleaseStatus)}
+                  >
+                    <option value="upcoming">🔜 Çıkacak (Wishlist Aşamasında)</option>
+                    <option value="early_access">⚡ Erken Erişim</option>
+                    <option value="released">✅ Çıkış Yaptı (Piyasada)</option>
+                  </select>
+                </div>
+                <div className="input-group">
+                  <label>İstek Listesi (Wishlist) Tahmini</label>
+                  <input 
+                    type="text"
+                    value={newWishlistEst}
+                    onChange={(e) => setNewWishlistEst(e.target.value)}
+                    placeholder="Örn: 250k+ Wishlist (#20 Steam)"
+                  />
+                </div>
+              </div>
+
               <div className="input-group">
-                <label>Tahmini İstek Listesi (Wishlist)</label>
+                <label>Wishlist Hacim Grubu</label>
                 <select 
                   value={newWishlist}
                   onChange={(e) => setNewWishlist(e.target.value as WishlistTier)}

@@ -4,6 +4,8 @@ export type CollisionRisk = 'Low' | 'Medium' | 'High' | 'Critical';
 
 export type WishlistTier = 'Very High (100k+)' | 'High (50k-100k)' | 'Moderate (10k-50k)' | 'Emerging (<10k)';
 
+export type GameReleaseStatus = 'upcoming' | 'early_access' | 'released';
+
 export interface CompetitorGame {
   id: string;
   title: string;
@@ -18,6 +20,8 @@ export interface CompetitorGame {
   pricingEstimate?: string;
   headerImage?: string;
   appId?: number | string;
+  releaseStatus?: GameReleaseStatus;
+  wishlistEstimate?: string;
 }
 
 export interface MarketingChannel {
