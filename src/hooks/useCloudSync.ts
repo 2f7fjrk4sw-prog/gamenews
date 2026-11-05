@@ -100,7 +100,7 @@ export const useCloudSync = ({
       teamMembers,
       registeredUsers,
     };
-    if (!isApplyingRemoteRef.current) {
+    if (!isApplyingRemoteRef.current && isInitialLoadDoneRef.current) {
       lastLocalEditRef.current = Date.now();
     }
   }, [myGameTitle, targetDate, competitors, checklist, teamMembers, registeredUsers]);
@@ -136,8 +136,8 @@ export const useCloudSync = ({
       }
 
       if (data && data.state) {
-        // If local user has edited something in the last 3 seconds, protect local input
-        if (Date.now() - lastLocalEditRef.current < 3000) {
+        // If initial load is already done and local user has edited something in the last 3 seconds, protect local input
+        if (isInitialLoadDoneRef.current && Date.now() - lastLocalEditRef.current < 3000) {
           setSyncStatus('synced');
           return;
         }

@@ -20,18 +20,74 @@ interface RadarSectionProps {
   setMyGameTitle: (title: string) => void;
 }
 
+const STEAM_KNOWN_GAMES: Record<string, string> = {
+  // Lethal Company
+  'comp-0': 'https://store.steampowered.com/app/1966720/Lethal_Company/',
+  'lethal company': 'https://store.steampowered.com/app/1966720/Lethal_Company/',
+  'lethal depths': 'https://store.steampowered.com/app/1966720/Lethal_Company/',
+
+  // Murky Divers
+  'comp-1': 'https://store.steampowered.com/app/2963840/Murky_Divers/',
+  'murky divers': 'https://store.steampowered.com/app/2963840/Murky_Divers/',
+
+  // Content Warning
+  'comp-3': 'https://store.steampowered.com/app/2881650/Content_Warning/',
+  'content warning': 'https://store.steampowered.com/app/2881650/Content_Warning/',
+  'night shift': 'https://store.steampowered.com/app/2881650/Content_Warning/',
+
+  // Chained Together
+  'comp-5': 'https://store.steampowered.com/app/2567870/Chained_Together/',
+  'chained together': 'https://store.steampowered.com/app/2567870/Chained_Together/',
+  'chained clowns': 'https://store.steampowered.com/app/2567870/Chained_Together/',
+
+  // Liar's Bar
+  'comp-4': 'https://store.steampowered.com/app/3097560/Liars_Bar/',
+  "liar's bar": 'https://store.steampowered.com/app/3097560/Liars_Bar/',
+  'liars bar': 'https://store.steampowered.com/app/3097560/Liars_Bar/',
+  'locksmith': 'https://store.steampowered.com/app/3097560/Liars_Bar/',
+
+  // Escape the Backrooms
+  'comp-2': 'https://store.steampowered.com/app/1943950/Escape_the_Backrooms/',
+  'escape the backrooms': 'https://store.steampowered.com/app/1943950/Escape_the_Backrooms/',
+  'heist buddies': 'https://store.steampowered.com/app/1943950/Escape_the_Backrooms/',
+
+  // Phasmophobia
+  'phasmophobia': 'https://store.steampowered.com/app/739630/Phasmophobia/',
+
+  // Peak Pals
+  'comp-6': 'https://store.steampowered.com/app/2261940/Peak_Pals/',
+  'peak pals': 'https://store.steampowered.com/app/2261940/Peak_Pals/',
+  'peak together': 'https://store.steampowered.com/app/2261940/Peak_Pals/',
+};
+
 const getSteamLink = (comp: CompetitorGame): string => {
   const url = (comp.steamUrl || '').trim();
-  if (
-    !url ||
-    url === 'https://store.steampowered.com' ||
-    url === 'https://store.steampowered.com/' ||
-    url === 'http://store.steampowered.com' ||
-    url === 'http://store.steampowered.com/'
-  ) {
-    return `https://store.steampowered.com/search/?term=${encodeURIComponent(comp.title)}`;
+
+  // 1. If it's already a valid specific Steam app page
+  if (url.includes('store.steampowered.com/app/')) {
+    return url;
   }
-  return url;
+
+  // 2. Check by ID
+  if (STEAM_KNOWN_GAMES[comp.id]) {
+    return STEAM_KNOWN_GAMES[comp.id];
+  }
+
+  // 3. Check by Title matching known games
+  const lowerTitle = (comp.title || '').toLowerCase();
+  for (const [key, link] of Object.entries(STEAM_KNOWN_GAMES)) {
+    if (lowerTitle.includes(key)) {
+      return link;
+    }
+  }
+
+  // 4. If URL is custom and not the generic store home
+  if (url && !url.endsWith('steampowered.com') && !url.endsWith('steampowered.com/')) {
+    return url;
+  }
+
+  // 5. Fallback: clean search on Steam with the title
+  return `https://store.steampowered.com/search/?term=${encodeURIComponent(comp.title)}`;
 };
 
 export const RadarSection: React.FC<RadarSectionProps> = ({
