@@ -25,7 +25,7 @@ export const initialCompetitors: CompetitorGame[] = [
     description: 'Terk edilmiş denizaltı laboratuvarlarında arkadaşlarınızla delil temizlediğiniz kaotik co-op korku oyunu.',
     keyMechanics: ['Yakınlık Sesi (Proximity Chat)', 'Denizaltı Oksijen Yönetimi', 'Komik Ragdoll Ölümleri'],
     pricingEstimate: '$6.99',
-    steamUrl: 'https://store.steampowered.com/app/2963840/Murky_Divers/',
+    steamUrl: 'https://store.steampowered.com/app/2963880/Murky_Divers/',
   },
   {
     id: 'comp-3',

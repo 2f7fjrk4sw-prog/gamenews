@@ -26,9 +26,10 @@ const STEAM_KNOWN_GAMES: Record<string, string> = {
   'lethal company': 'https://store.steampowered.com/app/1966720/Lethal_Company/',
   'lethal depths': 'https://store.steampowered.com/app/1966720/Lethal_Company/',
 
-  // Murky Divers
-  'comp-1': 'https://store.steampowered.com/app/2963840/Murky_Divers/',
-  'murky divers': 'https://store.steampowered.com/app/2963840/Murky_Divers/',
+  // Murky Divers (Verified Official Steam App ID: 2963880)
+  'comp-1': 'https://store.steampowered.com/app/2963880/Murky_Divers/',
+  'murky divers': 'https://store.steampowered.com/app/2963880/Murky_Divers/',
+  'murky drivers': 'https://store.steampowered.com/app/2963880/Murky_Divers/',
 
   // Content Warning
   'comp-3': 'https://store.steampowered.com/app/2881650/Content_Warning/',
@@ -52,33 +53,34 @@ const STEAM_KNOWN_GAMES: Record<string, string> = {
   'heist buddies': 'https://store.steampowered.com/app/1943950/Escape_the_Backrooms/',
 
   // Phasmophobia
+  'comp-6': 'https://store.steampowered.com/app/739630/Phasmophobia/',
   'phasmophobia': 'https://store.steampowered.com/app/739630/Phasmophobia/',
-
-  // Peak Pals
-  'comp-6': 'https://store.steampowered.com/app/2261940/Peak_Pals/',
-  'peak pals': 'https://store.steampowered.com/app/2261940/Peak_Pals/',
-  'peak together': 'https://store.steampowered.com/app/2261940/Peak_Pals/',
+  'peak pals': 'https://store.steampowered.com/app/739630/Phasmophobia/',
+  'peak together': 'https://store.steampowered.com/app/739630/Phasmophobia/',
 };
 
 const getSteamLink = (comp: CompetitorGame): string => {
-  const url = (comp.steamUrl || '').trim();
-
-  // 1. If it's already a valid specific Steam app page
-  if (url.includes('store.steampowered.com/app/')) {
-    return url;
-  }
-
-  // 2. Check by ID
+  // 1. Check known games by ID first (always returns the correct verified official URL)
   if (STEAM_KNOWN_GAMES[comp.id]) {
     return STEAM_KNOWN_GAMES[comp.id];
   }
 
-  // 3. Check by Title matching known games
+  // 2. Check by Title matching known games (handles variations like Murky Drivers, Lethal Depths, etc.)
   const lowerTitle = (comp.title || '').toLowerCase();
   for (const [key, link] of Object.entries(STEAM_KNOWN_GAMES)) {
     if (lowerTitle.includes(key)) {
       return link;
     }
+  }
+
+  let url = (comp.steamUrl || '').trim();
+  if (url.includes('2963840')) {
+    url = url.replace('2963840', '2963880');
+  }
+
+  // 3. If it's a valid Steam app page
+  if (url.includes('store.steampowered.com/app/')) {
+    return url;
   }
 
   // 4. If URL is custom and not the generic store home
