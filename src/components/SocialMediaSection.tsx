@@ -3,7 +3,7 @@ import { initialSocialTemplates, type SocialPostTemplate } from '../data/socialT
 import { 
   Copy, 
   Check, 
-  Sparkles, 
+  Info, 
   Volume2, 
   Film, 
   MessageCircle 
@@ -16,7 +16,8 @@ interface SocialMediaSectionProps {
 export const SocialMediaSection: React.FC<SocialMediaSectionProps> = ({ myGameTitle }) => {
   const [templates] = useState<SocialPostTemplate[]>(initialSocialTemplates);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('Hepsi');
-  const [gameTitle, setGameTitle] = useState(myGameTitle || 'Kaos Ekibi');
+  const [customGameTitle, setCustomGameTitle] = useState<string | null>(null);
+  const gameTitle = customGameTitle ?? (myGameTitle || 'Oyunumuz');
   const [price, setPrice] = useState('6.99');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -51,7 +52,7 @@ export const SocialMediaSection: React.FC<SocialMediaSectionProps> = ({ myGameTi
           <input 
             type="text" 
             value={gameTitle} 
-            onChange={(e) => setGameTitle(e.target.value)} 
+            onChange={(e) => setCustomGameTitle(e.target.value)} 
             placeholder="Oyun Adı"
           />
         </div>
@@ -81,9 +82,9 @@ export const SocialMediaSection: React.FC<SocialMediaSectionProps> = ({ myGameTi
 
       {/* 2. Viral Guidelines Box */}
       <div className="simple-info-bar">
-        <Sparkles size={16} className="info-icon" />
+        <Info size={16} className="info-icon" />
         <span>
-          <strong>TikTok & Instagram Reels Kuralı:</strong> Menü veya logo göstermeyin. İlk 2 saniyede komik çığlık, kapı kilitleme veya arkadaşı tuzağa itme anı olmalıdır.
+          <strong>Kısa Video İpucu:</strong> Menü veya logo ile başlamayın. İlk 2-3 saniyede oyundaki en komik veya heyecanlı anı gösterin. Aşağıdaki senaryoları tek tıkla kopyalayabilirsiniz.
         </span>
       </div>
 

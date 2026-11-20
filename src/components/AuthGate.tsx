@@ -320,12 +320,11 @@ export const AuthGate: React.FC<AuthGateProps> = ({
           {/* Header */}
           <div className="login-header">
             <div className="login-icon-box">
-              <Lock size={24} />
+              <Lock size={22} />
             </div>
-            <h1 className="login-title">GameLaunch Radar</h1>
-            <span className="login-badge">GELİŞTİRİCİ & EKİP BULUT GİRİŞİ</span>
+            <h1 className="login-title">Oyun Lansman Paneli</h1>
             <p className="login-desc">
-              Tüm ekip üyeleri kullanıcı adları ve şifreleriyle kaydedilir, gerçek zamanlı eşitlenir.
+              Oyun geliştirme ekibinizle çıkış tarihini, yapılacakları ve tanıtım planını tek yerden yönetin.
             </p>
           </div>
 

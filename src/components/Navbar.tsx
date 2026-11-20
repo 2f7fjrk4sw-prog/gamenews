@@ -1,23 +1,22 @@
 import React from 'react';
-import { 
-  Radar, 
-  Share2, 
-  Send, 
-  CheckSquare, 
-  BookOpen, 
-  AlertCircle,
-  Smartphone,
+import {
+  Radar,
+  Send,
+  CheckSquare,
+  BookOpen,
   FileDown,
   KeyRound,
   LogOut,
   CloudCheck,
   CloudOff,
   RefreshCw,
-  Users
+  AlertCircle,
+  Users,
+  ChevronDown,
 } from 'lucide-react';
-import type { CloudSyncStatus, TeamMember, OnlineUserPresence } from '../types';
+import type { CloudSyncStatus, TeamWorkspace } from '../types';
 
-export type ActiveTab = 'radar' | 'social' | 'marketing' | 'pitch' | 'checklist' | 'guide' | 'report';
+export type ActiveTab = 'radar' | 'checklist' | 'promo' | 'guide' | 'report';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -26,9 +25,8 @@ interface NavbarProps {
   checklistProgress: number;
   syncStatus?: CloudSyncStatus;
   openCloudModal?: () => void;
-  teamMembers?: TeamMember[];
-  currentMemberId?: string;
-  onlineUsers?: OnlineUserPresence[];
+  activeTeam: TeamWorkspace;
+  onlineCount?: number;
   openTeamModal?: () => void;
   onLogout?: () => void;
   openChangePassword?: () => void;
@@ -41,181 +39,142 @@ export const Navbar: React.FC<NavbarProps> = ({
   checklistProgress,
   syncStatus = 'local',
   openCloudModal,
-  teamMembers,
-  currentMemberId,
-  onlineUsers = [],
+  activeTeam,
+  onlineCount = 0,
   openTeamModal,
   onLogout,
   openChangePassword,
 }) => {
-  const currentMember = teamMembers?.find((m) => m.id === currentMemberId) || teamMembers?.[0];
   return (
     <header className="clean-navbar">
       <div className="navbar-container">
-        {/* Brand */}
-        <div className="brand-box">
-          <div className="brand-logo">
-            <Radar size={18} />
+        {/* Left: Brand & Active Team Pill */}
+        <div className="navbar-left-group">
+          <div className="brand-box">
+            <div className="brand-logo">
+              <Radar size={16} />
+            </div>
+            <span className="brand-name">Oyun Paneli</span>
           </div>
-          <div className="brand-text">
-            <span className="brand-name">GameLaunch Radar</span>
-            <span className="brand-tag">Friendslop & Co-Op</span>
-          </div>
+
+          {openTeamModal && (
+            <button
+              type="button"
+              className="navbar-team-switcher"
+              onClick={openTeamModal}
+              title="Ekip adını değiştir, yeni ekip oluştur veya ekibin oyununu düzenle"
+            >
+              <Users size={14} />
+              <span className="team-switcher-text">
+                <strong>{activeTeam.teamName}</strong>
+                <span className="team-switcher-sep">·</span>
+                <span>{activeTeam.gameTitle}</span>
+              </span>
+              {onlineCount > 1 && (
+                <span className="team-online-count">{onlineCount} aktif</span>
+              )}
+              <ChevronDown size={13} />
+            </button>
+          )}
         </div>
 
-        {/* Navigation Tabs */}
-        <nav className="clean-nav-links">
-          <button 
+        {/* Center: 5 Clear Navigation Tabs */}
+        <nav className="clean-nav-links" aria-label="Ana Menü">
+          <button
+            type="button"
             className={`clean-nav-item ${activeTab === 'radar' ? 'active' : ''}`}
             onClick={() => setActiveTab('radar')}
           >
             <Radar size={15} />
-            <span>Rakip Radarı</span>
+            <span>Genel Bakış & Rakipler</span>
             {criticalCollisionsCount > 0 && (
-              <span className="badge-danger-dot" title={`${criticalCollisionsCount} Kritik Çakışma`}>
-                <AlertCircle size={11} /> {criticalCollisionsCount}
+              <span className="badge-danger-dot" title={`${criticalCollisionsCount} tarih çakışması`}>
+                {criticalCollisionsCount}
               </span>
             )}
           </button>
 
-          <button 
-            className={`clean-nav-item ${activeTab === 'social' ? 'active' : ''}`}
-            onClick={() => setActiveTab('social')}
-          >
-            <Smartphone size={15} />
-            <span>Instagram & TikTok</span>
-          </button>
-
-          <button 
-            className={`clean-nav-item ${activeTab === 'marketing' ? 'active' : ''}`}
-            onClick={() => setActiveTab('marketing')}
-          >
-            <Share2 size={15} />
-            <span>Tanıtım Kanalları</span>
-          </button>
-
-          <button 
-            className={`clean-nav-item ${activeTab === 'pitch' ? 'active' : ''}`}
-            onClick={() => setActiveTab('pitch')}
-          >
-            <Send size={15} />
-            <span>Pitch & E-Posta</span>
-          </button>
-
-          <button 
+          <button
+            type="button"
             className={`clean-nav-item ${activeTab === 'checklist' ? 'active' : ''}`}
             onClick={() => setActiveTab('checklist')}
           >
             <CheckSquare size={15} />
-            <span>Lansman Kontrolü</span>
-            <span className="badge-progress-small">{checklistProgress}%</span>
+            <span>Yapılacaklar</span>
+            <span className="badge-progress-small">%{checklistProgress}</span>
           </button>
 
-          <button 
+          <button
+            type="button"
+            className={`clean-nav-item ${activeTab === 'promo' ? 'active' : ''}`}
+            onClick={() => setActiveTab('promo')}
+          >
+            <Send size={15} />
+            <span>Tanıtım & Mesajlar</span>
+          </button>
+
+          <button
+            type="button"
             className={`clean-nav-item ${activeTab === 'guide' ? 'active' : ''}`}
             onClick={() => setActiveTab('guide')}
           >
             <BookOpen size={15} />
-            <span>Rehber</span>
+            <span>Takvim & İpuçları</span>
           </button>
 
-          <button 
-            className={`clean-nav-item nav-export-highlight ${activeTab === 'report' ? 'active' : ''}`}
+          <button
+            type="button"
+            className={`clean-nav-item ${activeTab === 'report' ? 'active' : ''}`}
             onClick={() => setActiveTab('report')}
           >
             <FileDown size={15} />
-            <span>Rapor & Dışa Aktar</span>
+            <span>Rapor & Yedek</span>
           </button>
         </nav>
 
-        {/* Auth / Account Actions */}
+        {/* Right: Quiet Utility Controls */}
         <div className="navbar-auth-actions">
-          {onlineUsers.length > 0 && (
-            <div 
-              className="navbar-presence-pill"
-              onClick={openTeamModal}
-              title={`${onlineUsers.length} kişi şu an canlı sitede: ${onlineUsers.map((u) => u.name).join(', ')}`}
-            >
-              <span className="presence-pulse-dot" />
-              <span className="presence-count">{onlineUsers.length} Çevrim İçi</span>
-              <div className="presence-avatar-stack">
-                {onlineUsers.slice(0, 3).map((u) => (
-                  <span 
-                    key={u.sessionId}
-                    className="stack-avatar" 
-                    style={{ backgroundColor: u.avatarColor }}
-                    title={`${u.name} (${u.role})`}
-                  >
-                    {u.name[0]?.toUpperCase() || 'U'}
-                  </span>
-                ))}
-                {onlineUsers.length > 3 && (
-                  <span 
-                    className="stack-avatar stack-avatar-more" 
-                    title={`+${onlineUsers.length - 3} kişi daha sitede`}
-                  >
-                    +{onlineUsers.length - 3}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {openTeamModal && currentMember && (
-            <button 
-              className="navbar-icon-btn team-profile-btn"
-              onClick={openTeamModal}
-              title={`Ekip Üyeleri: ${currentMember.name} (${currentMember.role})`}
-            >
-              <span 
-                className="nav-user-avatar-dot"
-                style={{ backgroundColor: currentMember.avatarColor }}
-              >
-                {currentMember.name[0]?.toUpperCase() || 'U'}
-              </span>
-              <span className="btn-hide-mobile nav-user-label">
-                {currentMember.name.split(' ')[0]}
-              </span>
-              <Users size={12} className="nav-team-mini-ico" />
-            </button>
-          )}
-
           {openCloudModal && (
-            <button 
+            <button
+              type="button"
               className={`navbar-icon-btn cloud-badge-btn ${syncStatus}`}
               onClick={openCloudModal}
-              title="Ekip Bulut Senkronizasyon Ayarları"
+              title="Bulut Kayıt ve Senkronizasyon Durumu"
             >
-              {syncStatus === 'synced' && <CloudCheck size={14} className="sync-ico success" />}
-              {(syncStatus === 'syncing' || syncStatus === 'connecting') && <RefreshCw size={14} className="sync-ico spin" />}
-              {syncStatus === 'local' && <CloudOff size={14} className="sync-ico neutral" />}
-              {syncStatus === 'error' && <AlertCircle size={14} className="sync-ico danger" />}
+              {syncStatus === 'synced' && <CloudCheck size={14} />}
+              {(syncStatus === 'syncing' || syncStatus === 'connecting') && (
+                <RefreshCw size={14} className="spin" />
+              )}
+              {syncStatus === 'local' && <CloudOff size={14} />}
+              {syncStatus === 'error' && <AlertCircle size={14} />}
               <span className="btn-hide-mobile">
-                {syncStatus === 'synced' && 'Bulut Canlı'}
-                {syncStatus === 'syncing' && 'Eşitleniyor'}
+                {syncStatus === 'synced' && 'Kayıtlı'}
+                {syncStatus === 'syncing' && 'Kaydediliyor'}
                 {syncStatus === 'connecting' && 'Bağlanıyor'}
-                {syncStatus === 'local' && 'Yerel Mod'}
-                {syncStatus === 'error' && 'Bulut Hatası'}
+                {syncStatus === 'local' && 'Yerel'}
+                {syncStatus === 'error' && 'Hata'}
               </span>
             </button>
           )}
 
           {openChangePassword && (
-            <button 
-              className="navbar-icon-btn" 
+            <button
+              type="button"
+              className="navbar-icon-btn"
               onClick={openChangePassword}
-              title="Ekip Şifresini Değiştir"
+              title="Şifre Değiştir"
             >
               <KeyRound size={14} />
-              <span className="btn-hide-mobile">Şifre Değiştir</span>
+              <span className="btn-hide-mobile">Şifre</span>
             </button>
           )}
 
           {onLogout && (
-            <button 
-              className="navbar-icon-btn logout" 
+            <button
+              type="button"
+              className="navbar-icon-btn logout"
               onClick={onLogout}
-              title="Oturumu Kapat"
+              title="Çıkış Yap"
             >
               <LogOut size={14} />
               <span className="btn-hide-mobile">Çıkış</span>

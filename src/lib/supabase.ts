@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { TeamUser, SyncedProjectState } from '../types';
+import type { TeamUser, SyncedProjectState, TeamWorkspace } from '../types';
 
 export interface SupabaseConfig {
   url: string;
@@ -173,14 +173,251 @@ export const testSupabaseConnection = async (url: string, key: string): Promise<
   }
 };
 
+export const TEAMS_STORAGE_KEY = 'radar_teams_directory_v1';
+export const ACTIVE_TEAM_STORAGE_KEY = 'radar_active_team_id';
+
+export const getTeamStateStorageKey = (teamId: string): string => `radar_team_state_${teamId}`;
+
+export const generateInviteCode = (teamName: string): string => {
+  const clean = teamName
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 4) || 'EKIP';
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${clean}-${rand}`;
+};
+
+export const loadLocalTeams = (): TeamWorkspace[] => {
+  try {
+    const raw = localStorage.getItem(TEAMS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveLocalTeams = (teams: TeamWorkspace[]): void => {
+  try {
+    localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(teams));
+  } catch (e) {
+    console.error('saveLocalTeams error', e);
+  }
+};
+
+export const loadLocalTeamState = (teamId: string): SyncedProjectState | null => {
+  try {
+    const raw = localStorage.getItem(getTeamStateStorageKey(teamId));
+    if (!raw) return null;
+    return JSON.parse(raw) as SyncedProjectState;
+  } catch {
+    return null;
+  }
+};
+
+export const saveLocalTeamState = (teamId: string, state: SyncedProjectState): void => {
+  try {
+    localStorage.setItem(getTeamStateStorageKey(teamId), JSON.stringify(state));
+  } catch (e) {
+    console.error('saveLocalTeamState error', e);
+  }
+};
+
+export const mergeTeamsLists = (
+  localTeams: TeamWorkspace[],
+  remoteTeams: TeamWorkspace[]
+): TeamWorkspace[] => {
+  const map = new Map<string, TeamWorkspace>();
+
+  for (const t of remoteTeams) {
+    if (t && t.id) {
+      map.set(t.id, t);
+    }
+  }
+
+  for (const t of localTeams) {
+    if (!t || !t.id) continue;
+    const existing = map.get(t.id);
+    if (!existing) {
+      map.set(t.id, t);
+    } else {
+      const localTime = Date.parse(t.updatedAt || '') || 0;
+      const remoteTime = Date.parse(existing.updatedAt || '') || 0;
+      if (localTime >= remoteTime) {
+        map.set(t.id, t);
+      }
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    const ta = Date.parse(a.createdAt || '') || 0;
+    const tb = Date.parse(b.createdAt || '') || 0;
+    return ta - tb;
+  });
+};
+
+export const fetchCloudTeams = async (): Promise<TeamWorkspace[]> => {
+  const localTeams = loadLocalTeams();
+  const client = getSupabaseClient();
+  if (!client) return localTeams;
+
+  try {
+    const { data, error } = await client
+      .from('team_project_state')
+      .select('state')
+      .eq('id', 'teams_directory')
+      .maybeSingle();
+
+    if (error || !data?.state) {
+      return localTeams;
+    }
+
+    let rawState = data.state;
+    if (typeof rawState === 'string') {
+      try {
+        rawState = JSON.parse(rawState);
+      } catch {
+        return localTeams;
+      }
+    }
+
+    const remoteTeams = Array.isArray((rawState as { teams?: TeamWorkspace[] }).teams)
+      ? (rawState as { teams: TeamWorkspace[] }).teams
+      : [];
+
+    const merged = mergeTeamsLists(localTeams, remoteTeams);
+    saveLocalTeams(merged);
+    return merged;
+  } catch (e) {
+    console.error('fetchCloudTeams error', e);
+    return localTeams;
+  }
+};
+
+export const saveTeamsDirectoryToCloud = async (teams: TeamWorkspace[]): Promise<boolean> => {
+  saveLocalTeams(teams);
+  const client = getSupabaseClient();
+  if (!client) return true;
+
+  try {
+    const nowIso = new Date().toISOString();
+    const { error } = await client.from('team_project_state').upsert({
+      id: 'teams_directory',
+      state: { teams, updatedAt: nowIso },
+      updated_at: nowIso,
+    });
+    if (error) {
+      console.error('saveTeamsDirectoryToCloud error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('saveTeamsDirectoryToCloud exception:', e);
+    return false;
+  }
+};
+
+export const fetchTeamStateFromCloud = async (teamId: string): Promise<SyncedProjectState | null> => {
+  const client = getSupabaseClient();
+  if (!client) return loadLocalTeamState(teamId);
+
+  try {
+    const rowId = `team_${teamId}`;
+    const { data, error } = await client
+      .from('team_project_state')
+      .select('state')
+      .eq('id', rowId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('fetchTeamStateFromCloud error:', error.message);
+      return loadLocalTeamState(teamId);
+    }
+
+    if (data?.state) {
+      const parsed = typeof data.state === 'string' ? JSON.parse(data.state) : data.state;
+      return parsed as SyncedProjectState;
+    }
+
+    // Legacy fallback ONLY for default team if 'team_team_default' doesn't exist yet
+    if (teamId === 'team_default') {
+      const legacy = await client
+        .from('team_project_state')
+        .select('state')
+        .eq('id', 'default')
+        .maybeSingle();
+
+      if (legacy.data?.state) {
+        const parsedLegacy = typeof legacy.data.state === 'string'
+          ? JSON.parse(legacy.data.state)
+          : legacy.data.state;
+        return parsedLegacy as SyncedProjectState;
+      }
+    }
+
+    return loadLocalTeamState(teamId);
+  } catch (e) {
+    console.error('fetchTeamStateFromCloud exception:', e);
+    return loadLocalTeamState(teamId);
+  }
+};
+
+export const saveTeamStateToCloud = async (teamId: string, state: SyncedProjectState): Promise<boolean> => {
+  saveLocalTeamState(teamId, state);
+  const client = getSupabaseClient();
+  if (!client) return true;
+
+  try {
+    const nowIso = state.updatedAt || new Date().toISOString();
+    const { error } = await client.from('team_project_state').upsert({
+      id: `team_${teamId}`,
+      state: { ...state, teamId, updatedAt: nowIso },
+      updated_at: nowIso,
+    });
+    if (error) {
+      console.error('saveTeamStateToCloud error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('saveTeamStateToCloud exception:', e);
+    return false;
+  }
+};
+
 export const fetchCloudUsers = async (): Promise<TeamUser[]> => {
   const client = getSupabaseClient();
+  const readLocal = (): TeamUser[] => {
+    try {
+      const local = localStorage.getItem('game_registered_users');
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
+  };
+
   if (!client) {
-    const local = localStorage.getItem('game_registered_users');
-    return local ? JSON.parse(local) : [];
+    return readLocal();
   }
 
   try {
+    // Prefer dedicated users_directory row
+    const { data: usersRow } = await client
+      .from('team_project_state')
+      .select('state')
+      .eq('id', 'users_directory')
+      .maybeSingle();
+
+    if (usersRow?.state) {
+      const parsed = typeof usersRow.state === 'string' ? JSON.parse(usersRow.state) : usersRow.state;
+      if (Array.isArray(parsed.registeredUsers)) {
+        localStorage.setItem('game_registered_users', JSON.stringify(parsed.registeredUsers));
+        return parsed.registeredUsers;
+      }
+    }
+
+    // Legacy fallback from 'default' row
     const { data, error } = await client
       .from('team_project_state')
       .select('state')
@@ -188,8 +425,7 @@ export const fetchCloudUsers = async (): Promise<TeamUser[]> => {
       .maybeSingle();
 
     if (error || !data?.state) {
-      const local = localStorage.getItem('game_registered_users');
-      return local ? JSON.parse(local) : [];
+      return readLocal();
     }
 
     let state = data.state;
@@ -197,7 +433,7 @@ export const fetchCloudUsers = async (): Promise<TeamUser[]> => {
       try {
         state = JSON.parse(state);
       } catch {
-        return [];
+        return readLocal();
       }
     }
 
@@ -207,19 +443,16 @@ export const fetchCloudUsers = async (): Promise<TeamUser[]> => {
       return stateObj.registeredUsers;
     }
 
-    const local = localStorage.getItem('game_registered_users');
-    return local ? JSON.parse(local) : [];
+    return readLocal();
   } catch (e) {
     console.error('fetchCloudUsers error', e);
-    const local = localStorage.getItem('game_registered_users');
-    return local ? JSON.parse(local) : [];
+    return readLocal();
   }
 };
 
 export const saveUserToCloud = async (newUser: TeamUser): Promise<boolean> => {
   const client = getSupabaseClient();
-  
-  // Local first
+
   const existingUsers = await fetchCloudUsers();
   const filtered = existingUsers.filter(u => u.username.toLowerCase() !== newUser.username.toLowerCase());
   const updatedUsers = [...filtered, newUser];
@@ -228,33 +461,12 @@ export const saveUserToCloud = async (newUser: TeamUser): Promise<boolean> => {
   if (!client) return true;
 
   try {
-    const { data } = await client
-      .from('team_project_state')
-      .select('state')
-      .eq('id', 'default')
-      .maybeSingle();
-
-    let currentState: SyncedProjectState = {
-      myGameTitle: 'Kaos Ekibi: Hayatta Kalma',
-      targetDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90).toISOString().split('T')[0],
-      competitors: [],
-      checklist: [],
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (data?.state) {
-      currentState = typeof data.state === 'string' ? JSON.parse(data.state) : data.state;
-    }
-
-    currentState.registeredUsers = updatedUsers;
-    currentState.updatedAt = new Date().toISOString();
-
+    const nowIso = new Date().toISOString();
     await client.from('team_project_state').upsert({
-      id: 'default',
-      state: currentState,
-      updated_at: new Date().toISOString(),
+      id: 'users_directory',
+      state: { registeredUsers: updatedUsers, updatedAt: nowIso },
+      updated_at: nowIso,
     });
-
     return true;
   } catch (e) {
     console.error('saveUserToCloud error', e);

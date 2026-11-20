@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 interface ReportExportSectionProps {
+  teamName?: string;
   myGameTitle: string;
   setMyGameTitle: (title: string) => void;
   targetDate: string;
@@ -27,6 +28,7 @@ interface ReportExportSectionProps {
 }
 
 export const ReportExportSection: React.FC<ReportExportSectionProps> = ({
+  teamName,
   myGameTitle,
   setMyGameTitle,
   targetDate,
@@ -70,6 +72,7 @@ export const ReportExportSection: React.FC<ReportExportSectionProps> = ({
     // 1. Overview
     if (includeOverview) {
       lines.push(`## 📌 1. Lansman Genel Bakış`);
+      if (teamName) lines.push(`- **Ekip Adı:** ${teamName}`);
       lines.push(`- **Oyun Başlığı:** ${myGameTitle}`);
       lines.push(`- **Hedeflenen Çıkış Tarihi:** ${targetDate}`);
       lines.push(`- **Lansman Hazırlık Derecesi:** %${checklistProgress} Tamamlandı`);
@@ -195,6 +198,7 @@ export const ReportExportSection: React.FC<ReportExportSectionProps> = ({
 
     return lines.join('\n');
   }, [
+    teamName,
     myGameTitle,
     targetDate,
     reportDate,

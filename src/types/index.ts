@@ -104,7 +104,19 @@ export interface OnlineUserPresence {
   isMe?: boolean;
 }
 
+export interface TeamWorkspace {
+  id: string;
+  teamName: string;
+  gameTitle: string;
+  targetDate: string;
+  inviteCode: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SyncedProjectState {
+  teamId?: string;
+  teamName?: string;
   myGameTitle: string;
   targetDate: string;
   competitors: CompetitorGame[];

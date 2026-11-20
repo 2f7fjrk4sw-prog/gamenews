@@ -1,16 +1,30 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { 
-  CompetitorGame, 
-  ChecklistItem, 
-  CloudSyncStatus, 
-  SyncedProjectState, 
+import type {
+  CompetitorGame,
+  ChecklistItem,
+  CloudSyncStatus,
+  SyncedProjectState,
   TeamMember,
   TeamUser,
-  OnlineUserPresence 
+  TeamWorkspace,
+  OnlineUserPresence,
 } from '../types';
-import { getSupabaseClient, getSupabaseConfig } from '../lib/supabase';
+import {
+  getSupabaseClient,
+  getSupabaseConfig,
+  fetchCloudTeams,
+  saveTeamsDirectoryToCloud,
+  fetchTeamStateFromCloud,
+  saveTeamStateToCloud,
+  loadLocalTeamState,
+  saveLocalTeamState,
+  mergeTeamsLists,
+} from '../lib/supabase';
 
 interface UseCloudSyncProps {
+  activeTeamId: string;
+  teamName: string;
+  setTeamName: (name: string) => void;
   myGameTitle: string;
   setMyGameTitle: (title: string) => void;
   targetDate: string;
@@ -19,14 +33,19 @@ interface UseCloudSyncProps {
   setCompetitors: React.Dispatch<React.SetStateAction<CompetitorGame[]>>;
   checklist: ChecklistItem[];
   setChecklist: React.Dispatch<React.SetStateAction<ChecklistItem[]>>;
-  teamMembers?: TeamMember[];
-  setTeamMembers?: React.Dispatch<React.SetStateAction<TeamMember[]>>;
+  teamMembers: TeamMember[];
+  setTeamMembers: React.Dispatch<React.SetStateAction<TeamMember[]>>;
   currentMember?: TeamMember;
-  registeredUsers?: TeamUser[];
-  setRegisteredUsers?: React.Dispatch<React.SetStateAction<TeamUser[]>>;
+  registeredUsers: TeamUser[];
+  setRegisteredUsers: React.Dispatch<React.SetStateAction<TeamUser[]>>;
+  teams: TeamWorkspace[];
+  setTeams: React.Dispatch<React.SetStateAction<TeamWorkspace[]>>;
 }
 
 export const useCloudSync = ({
+  activeTeamId,
+  teamName,
+  setTeamName,
   myGameTitle,
   setMyGameTitle,
   targetDate,
@@ -40,6 +59,8 @@ export const useCloudSync = ({
   currentMember,
   registeredUsers,
   setRegisteredUsers,
+  teams,
+  setTeams,
 }: UseCloudSyncProps) => {
   const config = getSupabaseConfig();
   const [isPaused, setIsPaused] = useState<boolean>(() => {
@@ -48,7 +69,6 @@ export const useCloudSync = ({
 
   const isCloudEnabled = config.isConfigured && !isPaused;
 
-  // Unique session ID per browser tab/device to allow accurate multi-device presence tracking
   const [clientSessionId] = useState<string>(() => {
     try {
       const existing = sessionStorage.getItem('app_presence_session_id');
@@ -69,14 +89,13 @@ export const useCloudSync = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUserPresence[]>([]);
 
-  // Keep a stable ref to the current member so channel re-subscriptions don't churn
   const currentMemberRef = useRef(currentMember);
   useEffect(() => {
     currentMemberRef.current = currentMember;
   }, [currentMember]);
 
-  // Keep a stable ref to the latest state
   const latestStateRef = useRef({
+    teamName,
     myGameTitle,
     targetDate,
     competitors,
@@ -93,6 +112,7 @@ export const useCloudSync = ({
 
   useEffect(() => {
     latestStateRef.current = {
+      teamName,
       myGameTitle,
       targetDate,
       competitors,
@@ -103,9 +123,51 @@ export const useCloudSync = ({
     if (!isApplyingRemoteRef.current && isInitialLoadDoneRef.current) {
       lastLocalEditRef.current = Date.now();
     }
-  }, [myGameTitle, targetDate, competitors, checklist, teamMembers, registeredUsers]);
+  }, [teamName, myGameTitle, targetDate, competitors, checklist, teamMembers, registeredUsers]);
 
-  // Pull latest snapshot from database
+  const applyRemoteSnapshot = useCallback(
+    (stateObj: SyncedProjectState, targetTeamId: string) => {
+      isApplyingRemoteRef.current = true;
+
+      if (stateObj.teamName) {
+        setTeamName(stateObj.teamName);
+      }
+      if (stateObj.myGameTitle) {
+        setMyGameTitle(stateObj.myGameTitle);
+      }
+      if (stateObj.targetDate) {
+        setTargetDate(stateObj.targetDate);
+      }
+      if (Array.isArray(stateObj.competitors)) {
+        setCompetitors(stateObj.competitors);
+      }
+      if (Array.isArray(stateObj.checklist)) {
+        setChecklist(stateObj.checklist);
+      }
+      if (Array.isArray(stateObj.teamMembers)) {
+        setTeamMembers(stateObj.teamMembers);
+      }
+      if (Array.isArray(stateObj.registeredUsers)) {
+        setRegisteredUsers(stateObj.registeredUsers);
+        localStorage.setItem('game_registered_users', JSON.stringify(stateObj.registeredUsers));
+      }
+
+      saveLocalTeamState(targetTeamId, {
+        ...stateObj,
+        teamId: targetTeamId,
+      });
+
+      setLastSyncedAt(new Date().toLocaleTimeString('tr-TR'));
+      setSyncStatus('synced');
+
+      setTimeout(() => {
+        isApplyingRemoteRef.current = false;
+      }, 300);
+    },
+    [setChecklist, setCompetitors, setMyGameTitle, setRegisteredUsers, setTargetDate, setTeamMembers, setTeamName]
+  );
+
+  // Pull latest snapshot for the active team (respecting newer local timestamps)
   const pullFromCloud = useCallback(async () => {
     if (isPaused) {
       setSyncStatus('local');
@@ -122,90 +184,48 @@ export const useCloudSync = ({
       setSyncStatus('connecting');
       setErrorMessage(null);
 
-      const { data, error } = await client
-        .from('team_project_state')
-        .select('state, updated_at')
-        .eq('id', 'default')
-        .maybeSingle();
-
-      if (error) {
-        console.warn('Cloud pull error:', error.message);
-        setSyncStatus('error');
-        setErrorMessage(error.message);
-        return;
+      // 1. Sync teams directory (merge so local creations are never lost)
+      const mergedTeams = await fetchCloudTeams();
+      if (mergedTeams.length > 0) {
+        setTeams((prev) => mergeTeamsLists(prev, mergedTeams));
       }
 
-      if (data && data.state) {
-        // If initial load is already done and local user has edited something in the last 3 seconds, protect local input
+      // 2. Fetch state for the active team
+      const remoteState = await fetchTeamStateFromCloud(activeTeamId);
+      const localState = loadLocalTeamState(activeTeamId);
+
+      if (remoteState) {
         if (isInitialLoadDoneRef.current && Date.now() - lastLocalEditRef.current < 3000) {
           setSyncStatus('synced');
           return;
         }
 
-        let remoteState = data.state;
-        if (typeof remoteState === 'string') {
-          try {
-            remoteState = JSON.parse(remoteState);
-          } catch {
-            return;
-          }
-        }
-        const stateObj = remoteState as SyncedProjectState;
+        const localTime = localState?.updatedAt ? Date.parse(localState.updatedAt) || 0 : 0;
+        const remoteTime = remoteState.updatedAt ? Date.parse(remoteState.updatedAt) || 0 : 0;
 
-        isApplyingRemoteRef.current = true;
-
-        if (stateObj.myGameTitle) {
-          setMyGameTitle(stateObj.myGameTitle);
-          localStorage.setItem('user_game_title', stateObj.myGameTitle);
+        if (localState && localTime > remoteTime) {
+          // Local copy is newer: keep local and push it to cloud
+          await saveTeamStateToCloud(activeTeamId, localState);
+          setLastSyncedAt(new Date().toLocaleTimeString('tr-TR'));
+          setSyncStatus('synced');
+        } else {
+          applyRemoteSnapshot(remoteState, activeTeamId);
         }
-        if (stateObj.targetDate) {
-          setTargetDate(stateObj.targetDate);
-          localStorage.setItem('user_game_target_date', stateObj.targetDate);
-        }
-        if (Array.isArray(stateObj.competitors)) {
-          setCompetitors(stateObj.competitors);
-          localStorage.setItem('game_competitors', JSON.stringify(stateObj.competitors));
-        }
-        if (Array.isArray(stateObj.checklist)) {
-          setChecklist(stateObj.checklist);
-          localStorage.setItem('game_checklist', JSON.stringify(stateObj.checklist));
-        }
-        if (Array.isArray(stateObj.teamMembers) && setTeamMembers) {
-          setTeamMembers(stateObj.teamMembers);
-          localStorage.setItem('game_team_members', JSON.stringify(stateObj.teamMembers));
-        }
-        if (Array.isArray(stateObj.registeredUsers) && setRegisteredUsers) {
-          setRegisteredUsers(stateObj.registeredUsers);
-          localStorage.setItem('game_registered_users', JSON.stringify(stateObj.registeredUsers));
-        }
-        if (Array.isArray(stateObj.registeredUsers) && setRegisteredUsers) {
-          setRegisteredUsers(stateObj.registeredUsers);
-          localStorage.setItem('game_registered_users', JSON.stringify(stateObj.registeredUsers));
-        }
-
-        const now = new Date().toLocaleTimeString('tr-TR');
-        setLastSyncedAt(now);
-        setSyncStatus('synced');
-
-        setTimeout(() => {
-          isApplyingRemoteRef.current = false;
-        }, 300);
       } else {
-        // Table row does not exist yet; seed it with current local state
-        const currentState = latestStateRef.current;
-        const initialPayload = {
-          ...currentState,
+        // Team does not exist on cloud yet; upload local state immediately
+        const current = latestStateRef.current;
+        const initialPayload: SyncedProjectState = {
+          teamId: activeTeamId,
+          teamName: current.teamName,
+          myGameTitle: current.myGameTitle,
+          targetDate: current.targetDate,
+          competitors: current.competitors,
+          checklist: current.checklist,
+          teamMembers: current.teamMembers,
           updatedAt: new Date().toISOString(),
         };
-
-        await client.from('team_project_state').upsert({
-          id: 'default',
-          state: initialPayload,
-          updated_at: new Date().toISOString(),
-        });
-
-        const now = new Date().toLocaleTimeString('tr-TR');
-        setLastSyncedAt(now);
+        await saveTeamStateToCloud(activeTeamId, initialPayload);
+        setLastSyncedAt(new Date().toLocaleTimeString('tr-TR'));
         setSyncStatus('synced');
       }
     } catch (err: unknown) {
@@ -213,16 +233,20 @@ export const useCloudSync = ({
       setSyncStatus('error');
       setErrorMessage((err as Error).message);
     }
-  }, [isPaused, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers, setRegisteredUsers]);
+  }, [activeTeamId, applyRemoteSnapshot, isPaused, setTeams]);
 
-  // Real-time WebSocket Channel: Instant Broadcast (<50ms) + Presence Tracking + Postgres Backup
+  // Real-time WebSocket Channel per Team
   useEffect(() => {
+    isInitialLoadDoneRef.current = false;
+
     if (!isCloudEnabled) {
+      isInitialLoadDoneRef.current = true;
       return;
     }
 
     const client = getSupabaseClient();
     if (!client) {
+      isInitialLoadDoneRef.current = true;
       return;
     }
 
@@ -237,8 +261,7 @@ export const useCloudSync = ({
 
     initSync();
 
-    // Create channel with Broadcast enabled and Presence tracking keyed by clientSessionId
-    const channel = client.channel('team_sync_room', {
+    const channel = client.channel(`team_sync_room_${activeTeamId}`, {
       config: {
         broadcast: { self: false },
         presence: { key: clientSessionId },
@@ -247,61 +270,22 @@ export const useCloudSync = ({
 
     channelRef.current = channel;
 
-    // 1. Instant Peer-to-Peer WebSocket Broadcast Event
     channel.on('broadcast', { event: 'state_update' }, ({ payload }) => {
       if (!isMounted || !payload) return;
-
-      // If user has edited locally in the last 2 seconds, do not overwrite active typing
-      if (Date.now() - lastLocalEditRef.current < 2000) {
-        return;
-      }
+      if (Date.now() - lastLocalEditRef.current < 2000) return;
 
       const remoteState = payload as SyncedProjectState;
-      isApplyingRemoteRef.current = true;
-
-      if (remoteState.myGameTitle) {
-        setMyGameTitle(remoteState.myGameTitle);
-        localStorage.setItem('user_game_title', remoteState.myGameTitle);
-      }
-      if (remoteState.targetDate) {
-        setTargetDate(remoteState.targetDate);
-        localStorage.setItem('user_game_target_date', remoteState.targetDate);
-      }
-      if (Array.isArray(remoteState.competitors)) {
-        setCompetitors(remoteState.competitors);
-        localStorage.setItem('game_competitors', JSON.stringify(remoteState.competitors));
-      }
-      if (Array.isArray(remoteState.checklist)) {
-        setChecklist(remoteState.checklist);
-        localStorage.setItem('game_checklist', JSON.stringify(remoteState.checklist));
-      }
-      if (Array.isArray(remoteState.teamMembers) && setTeamMembers) {
-        setTeamMembers(remoteState.teamMembers);
-        localStorage.setItem('game_team_members', JSON.stringify(remoteState.teamMembers));
-      }
-      if (Array.isArray(remoteState.registeredUsers) && setRegisteredUsers) {
-        setRegisteredUsers(remoteState.registeredUsers);
-        localStorage.setItem('game_registered_users', JSON.stringify(remoteState.registeredUsers));
-      }
-
-      const now = new Date().toLocaleTimeString('tr-TR');
-      setLastSyncedAt(now);
-      setSyncStatus('synced');
-
-      setTimeout(() => {
-        isApplyingRemoteRef.current = false;
-      }, 300);
+      if (remoteState.teamId && remoteState.teamId !== activeTeamId) return;
+      applyRemoteSnapshot(remoteState, activeTeamId);
     });
 
-    // 2. Real-time Presence: Track all connected devices / team members
     const updatePresenceList = () => {
       if (!isMounted) return;
       const state = channel.presenceState();
       const onlineList: OnlineUserPresence[] = [];
       const seenSessions = new Set<string>();
-
-      // Count occurrences of each member ID across distinct sessions
       const profileCounts: Record<string, number> = {};
+
       for (const presences of Object.values(state)) {
         for (const raw of presences as unknown as OnlineUserPresence[]) {
           const sId = raw.sessionId;
@@ -321,21 +305,15 @@ export const useCloudSync = ({
           const sId = raw.sessionId || key;
           if (sId && !seenSessions.has(sId)) {
             seenSessions.add(sId);
-
             const isMe = sId === clientSessionId;
             const pId = raw.id || 'anonymous';
             let displayName = raw.name || 'Ekip Üyesi';
 
-            // If multiple devices share the same profile (e.g. default "Sen (Proje Lideri)"),
-            // differentiate them cleanly so it is clear there are multiple devices online
             if ((profileCounts[pId] || 0) > 1) {
               deviceCounter[pId] = (deviceCounter[pId] || 0) + 1;
-              const devNum = deviceCounter[pId];
-              if (isMe) {
-                displayName = `${displayName} (Bu Cihaz)`;
-              } else {
-                displayName = `${displayName} (Cihaz #${devNum})`;
-              }
+              displayName = isMe
+                ? `${displayName} (Bu Cihaz)`
+                : `${displayName} (Cihaz #${deviceCounter[pId]})`;
             } else if (isMe) {
               displayName = `${displayName} (Siz)`;
             }
@@ -345,14 +323,13 @@ export const useCloudSync = ({
               id: pId,
               name: displayName,
               role: raw.role || 'Geliştirici',
-              avatarColor: raw.avatarColor || '#58a6ff',
+              avatarColor: raw.avatarColor || '#4f83cc',
               isMe,
             });
           }
         }
       }
 
-      // Sort so current client device is first
       onlineList.sort((a, b) => (b.isMe ? 1 : 0) - (a.isMe ? 1 : 0));
       setOnlineUsers(onlineList);
     };
@@ -361,7 +338,6 @@ export const useCloudSync = ({
     channel.on('presence', { event: 'join' }, updatePresenceList);
     channel.on('presence', { event: 'leave' }, updatePresenceList);
 
-    // 3. PostgreSQL database changes fallback
     channel.on(
       'postgres_changes',
       {
@@ -371,9 +347,20 @@ export const useCloudSync = ({
       },
       (payload) => {
         if (!isMounted || !payload.new) return;
+        const row = payload.new as { id?: string; state?: unknown };
+
+        if (row.id === 'teams_directory' && row.state) {
+          const raw = typeof row.state === 'string' ? JSON.parse(row.state) : row.state;
+          if (Array.isArray(raw.teams)) {
+            setTeams((prev) => mergeTeamsLists(prev, raw.teams));
+          }
+          return;
+        }
+
+        if (row.id !== `team_${activeTeamId}`) return;
         if (Date.now() - lastLocalEditRef.current < 2000) return;
 
-        let remoteState = (payload.new as Record<string, unknown>).state;
+        let remoteState = row.state;
         if (typeof remoteState === 'string') {
           try {
             remoteState = JSON.parse(remoteState);
@@ -381,42 +368,7 @@ export const useCloudSync = ({
             return;
           }
         }
-        const stateObj = remoteState as SyncedProjectState;
-
-        isApplyingRemoteRef.current = true;
-
-        if (stateObj.myGameTitle) {
-          setMyGameTitle(stateObj.myGameTitle);
-          localStorage.setItem('user_game_title', stateObj.myGameTitle);
-        }
-        if (stateObj.targetDate) {
-          setTargetDate(stateObj.targetDate);
-          localStorage.setItem('user_game_target_date', stateObj.targetDate);
-        }
-        if (Array.isArray(stateObj.competitors)) {
-          setCompetitors(stateObj.competitors);
-          localStorage.setItem('game_competitors', JSON.stringify(stateObj.competitors));
-        }
-        if (Array.isArray(stateObj.checklist)) {
-          setChecklist(stateObj.checklist);
-          localStorage.setItem('game_checklist', JSON.stringify(stateObj.checklist));
-        }
-        if (Array.isArray(stateObj.teamMembers) && setTeamMembers) {
-          setTeamMembers(stateObj.teamMembers);
-          localStorage.setItem('game_team_members', JSON.stringify(stateObj.teamMembers));
-        }
-        if (Array.isArray(stateObj.registeredUsers) && setRegisteredUsers) {
-          setRegisteredUsers(stateObj.registeredUsers);
-          localStorage.setItem('game_registered_users', JSON.stringify(stateObj.registeredUsers));
-        }
-
-        const now = new Date().toLocaleTimeString('tr-TR');
-        setLastSyncedAt(now);
-        setSyncStatus('synced');
-
-        setTimeout(() => {
-          isApplyingRemoteRef.current = false;
-        }, 300);
+        applyRemoteSnapshot(remoteState as SyncedProjectState, activeTeamId);
       }
     );
 
@@ -424,14 +376,13 @@ export const useCloudSync = ({
       if (!isMounted) return;
       if (status === 'SUBSCRIBED') {
         setSyncStatus('synced');
-        // Track presence immediately with unique sessionId
         const member = currentMemberRef.current;
         await channel.track({
           sessionId: clientSessionId,
           id: member?.id || 'anonymous',
           name: member?.name || 'Ekip Üyesi',
           role: member?.role || 'Geliştirici',
-          avatarColor: member?.avatarColor || '#58a6ff',
+          avatarColor: member?.avatarColor || '#4f83cc',
         });
       } else if (status === 'CHANNEL_ERROR') {
         setSyncStatus('error');
@@ -452,9 +403,9 @@ export const useCloudSync = ({
       channel.unsubscribe();
       channelRef.current = null;
     };
-  }, [isCloudEnabled, pullFromCloud, setChecklist, setCompetitors, setMyGameTitle, setTargetDate, setTeamMembers, setRegisteredUsers, clientSessionId]);
+  }, [activeTeamId, applyRemoteSnapshot, clientSessionId, isCloudEnabled, pullFromCloud, setTeams]);
 
-  // Update presence tracking if current member profile changes without recreating channel
+  // Update presence if current member changes
   useEffect(() => {
     if (channelRef.current && currentMember && isCloudEnabled) {
       channelRef.current.track({
@@ -467,18 +418,31 @@ export const useCloudSync = ({
     }
   }, [currentMember, isCloudEnabled, clientSessionId]);
 
-  // Broadcast change immediately to peers + Debounced save to DB
+  // Persist active team state immediately to localStorage + debounced sync to Supabase
   useEffect(() => {
-    if (!isCloudEnabled || !isInitialLoadDoneRef.current || isApplyingRemoteRef.current) {
+    if (!isInitialLoadDoneRef.current || isApplyingRemoteRef.current) {
       return;
     }
 
+    const nowIso = new Date().toISOString();
     const payload: SyncedProjectState = {
-      ...latestStateRef.current,
-      updatedAt: new Date().toISOString(),
+      teamId: activeTeamId,
+      teamName,
+      myGameTitle,
+      targetDate,
+      competitors,
+      checklist,
+      teamMembers,
+      updatedAt: nowIso,
     };
 
-    // 1. Send instantaneous WebSocket broadcast to all connected devices (<50ms)
+    // Always persist locally immediately so refresh never loses edits
+    saveLocalTeamState(activeTeamId, payload);
+
+    if (!isCloudEnabled) {
+      return;
+    }
+
     if (channelRef.current) {
       channelRef.current.send({
         type: 'broadcast',
@@ -487,44 +451,30 @@ export const useCloudSync = ({
       });
     }
 
-    // 2. Debounced save to PostgreSQL DB for persistence
-    const client = getSupabaseClient();
-    if (!client) return;
-
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
     debounceTimerRef.current = setTimeout(async () => {
       setSyncStatus('syncing');
-      try {
-        const { error } = await client.from('team_project_state').upsert({
-          id: 'default',
-          state: payload,
-          updated_at: new Date().toISOString(),
-        });
-
-        if (error) {
-          console.error('Push to cloud failed:', error.message);
-          setSyncStatus('error');
-          setErrorMessage(error.message);
-        } else {
-          setLastSyncedAt(new Date().toLocaleTimeString('tr-TR'));
-          setSyncStatus('synced');
-          setErrorMessage(null);
-        }
-      } catch (err: unknown) {
+      const ok = await saveTeamStateToCloud(activeTeamId, payload);
+      await saveTeamsDirectoryToCloud(teams);
+      if (ok) {
+        setLastSyncedAt(new Date().toLocaleTimeString('tr-TR'));
+        setSyncStatus('synced');
+        setErrorMessage(null);
+      } else {
         setSyncStatus('error');
-        setErrorMessage((err as Error).message);
+        setErrorMessage('Değişiklikler buluta yazılamadı, yerel olarak saklandı.');
       }
-    }, 600);
+    }, 450);
 
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [myGameTitle, targetDate, competitors, checklist, teamMembers, registeredUsers, isCloudEnabled]);
+  }, [activeTeamId, teamName, myGameTitle, targetDate, competitors, checklist, teamMembers, teams, isCloudEnabled]);
 
   const togglePauseSync = useCallback(() => {
     const nextPaused = !isPaused;
@@ -539,7 +489,7 @@ export const useCloudSync = ({
   }, [isPaused]);
 
   return {
-    syncStatus,
+    syncStatus: !isCloudEnabled ? ('local' as CloudSyncStatus) : syncStatus,
     lastSyncedAt,
     errorMessage,
     isCloudEnabled,

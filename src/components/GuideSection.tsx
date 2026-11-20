@@ -32,6 +32,15 @@ export const GuideSection: React.FC<GuideSectionProps> = ({ festivals, targetDat
 
   return (
     <div className="tab-pane">
+      <div className="page-intro-box">
+        <div>
+          <h2 className="page-intro-title">Takvim & İpuçları</h2>
+          <p className="page-intro-desc">
+            Seçtiğiniz çıkış tarihinin büyük Steam indirimleriyle çakışıp çakışmadığını görün ve oyun tanıtımı için temel kuralları okuyun.
+          </p>
+        </div>
+      </div>
+
       {/* Sub-navigation */}
       <div className="guide-sub-tabs">
         <button 

@@ -11,14 +11,17 @@ import {
 interface PitchStudioProps {
   templates: PitchTemplate[];
   myGameTitle: string;
+  teamName?: string;
 }
 
-export const PitchStudioSection: React.FC<PitchStudioProps> = ({ templates, myGameTitle }) => {
+export const PitchStudioSection: React.FC<PitchStudioProps> = ({ templates, myGameTitle, teamName }) => {
   const [selectedId, setSelectedId] = useState<string>(templates[0]?.id || 'pitch-streamer');
   const [copied, setCopied] = useState(false);
 
   // Key Dynamic Inputs
-  const [gameTitle, setGameTitle] = useState(myGameTitle || 'Kaos Ekibi');
+  const [customGameTitle, setCustomGameTitle] = useState<string | null>(null);
+  const gameTitle = customGameTitle ?? (myGameTitle || 'Oyunumuz');
+  const senderTeam = teamName || 'Geliştirici Ekip';
   const [price, setPrice] = useState('6.99');
   const [mechanic, setMechanic] = useState('4 arkadaş canavarlardan kaçarken sesinizi sadece yakındayken duyabildiğiniz fizik-korku oyunu');
   const [steamLink, setSteamLink] = useState('https://store.steampowered.com/app/XXXXXX');
@@ -50,7 +53,7 @@ export const PitchStudioSection: React.FC<PitchStudioProps> = ({ templates, myGa
     return text
       .replace(/\[Oyununuzun Adı\]/g, gameTitle)
       .replace(/\[Oyun Adı\]/g, gameTitle)
-      .replace(/\[Adınız \/ Ekip Adınız\]/g, 'Geliştirici Ekip')
+      .replace(/\[Adınız \/ Ekip Adınız\]/g, senderTeam || 'Geliştirici Ekip')
       .replace(/\[Ekip Sayısı\]/g, '3')
       .replace(/\[1 Cümlelik Kaotik Mekanik.*?\]/g, mechanic)
       .replace(/\[1 Cümlelik Kaotik Mekanik\]/g, mechanic)
@@ -98,7 +101,7 @@ export const PitchStudioSection: React.FC<PitchStudioProps> = ({ templates, myGa
           <input 
             type="text" 
             value={gameTitle} 
-            onChange={(e) => setGameTitle(e.target.value)} 
+            onChange={(e) => setCustomGameTitle(e.target.value)} 
           />
         </div>
 

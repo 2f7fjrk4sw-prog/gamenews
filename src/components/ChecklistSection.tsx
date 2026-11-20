@@ -112,12 +112,21 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklist, s
   return (
     <div className="tab-pane">
       {/* 1. Progress Overview Bar */}
+      <div className="page-intro-box">
+        <div>
+          <h2 className="page-intro-title">Yapılacaklar Listesi</h2>
+          <p className="page-intro-desc">
+            Oyununuzu Steam'de yayınlayana kadar tamamlamanız gereken adımlar. Kutucukları işaretleyin; bilmediğiniz adımların altında "Nasıl Yapılır?" rehberini açabilirsiniz.
+          </p>
+        </div>
+      </div>
+
       <div className="checklist-summary-card">
         <div className="summary-top">
           <div>
-            <h3 className="summary-title">Lansman Yol Haritası & Kontrol Listesi</h3>
+            <h3 className="summary-title">Genel Hazırlık Durumu</h3>
             <span className="summary-subtitle">
-              {totalTasks} adımdan {completedTasks} tanesi tamamlandı (%{progressPercent}) — Her maddenin detaylı yapılış rehberini altındaki butondan açabilirsiniz.
+              {totalTasks} adımdan {completedTasks} tanesi tamamlandı (%{progressPercent})
             </span>
           </div>
 
